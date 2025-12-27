@@ -9,36 +9,48 @@ navItems.forEach(item => {
   });
 });
 
-// Example: Switching asset tabs
-const tabButtons = document.querySelectorAll('.tab-button');
-const assetDetails = document.querySelector('.asset-details');
+// 获取用户信息并展示
+document.addEventListener('DOMContentLoaded', () => {
+  fetch('/api/user/profile')
+    .then(response => response.json())
+    .then(data => {
+      document.querySelector('.account-overview p').textContent = `Welcome, ${data.username}`;
+    })
+    .catch(error => console.error('Error fetching user data:', error));
+});
 
-tabButtons.forEach(button => {
-  button.addEventListener('click', function() {
-    // Toggle active class
-    tabButtons.forEach(tab => tab.classList.remove('active'));
-    this.classList.add('active');
+// 获取产品列表并展示
+document.addEventListener('DOMContentLoaded', () => {
+  fetch('/api/product/products')
+    .then(response => response.json())
+    .then(data => {
+      const productList = document.querySelector('.market-list ul');
+      data.forEach(product => {
+        const li = document.createElement('li');
+        li.textContent = `${product.name} - ${product.yield}`;
+        productList.appendChild(li);
+      });
+    })
+    .catch(error => console.error('Error fetching products:', error));
+});
 
-    // Change the asset details based on the selected tab
-    if (this.id === 'platform-assets') {
-      assetDetails.innerHTML = `<h3>Platform Assets</h3>
-      <ul>
-        <li>BTC: 2.5</li>
-        <li>ETH: 10.0</li>
-        <li>USDT: 50,000</li>
-      </ul>`;
-    } else if (this.id === 'investment-assets') {
-      assetDetails.innerHTML = `<h3>Investment Assets</h3>
-      <ul>
-        <li>DeFi Fund: $50,000</li>
-        <li>Loan Fund: $20,000</li>
-      </ul>`;
-    } else if (this.id === 'contract-assets') {
-      assetDetails.innerHTML = `<h3>Contract Assets</h3>
-      <ul>
-        <li>BTC Margin: 0.5</li>
-        <li>ETH Margin: 2.0</li>
-      </ul>`;
-    }
-  });
+// 提交交易订单
+document.getElementById('buy-btn').addEventListener('click', () => {
+  const pair = document.getElementById('pair').value;
+  const direction = 'buy';
+  const amount = document.getElementById('amount').value;
+  const price = document.getElementById('price').value;
+
+  fetch('/api/trade/spot', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ pair, direction, amount, price }),
+  })
+    .then(response => response.json())
+    .then(data => {
+      alert(data.message);
+    })
+    .catch(error => console.error('Error submitting trade order:', error));
 });
