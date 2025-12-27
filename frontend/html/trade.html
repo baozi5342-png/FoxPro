@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trade - FoxPro</title>
+  <link rel="stylesheet" href="../css/trade.css">
+</head>
+<body>
+  <!-- Top Header -->
+  <header class="top-header">
+    <div class="logo">FoxPro</div>
+  </header>
+
+  <!-- Banner -->
+  <div class="banner">
+    <img src="../images/trade-banner.jpg" alt="Trade Banner">
+  </div>
+
+  <!-- Trade Form -->
+  <div class="trade-form">
+    <h3>Spot Trading</h3>
+    <div class="trade-options">
+      <div class="trade-option">
+        <label for="pair">Select Pair</label>
+        <select id="pair">
+          <option value="BTC/USDT">BTC/USDT</option>
+          <option value="ETH/USDT">ETH/USDT</option>
+          <option value="USDT/BTC">USDT/BTC</option>
+          <!-- Add more pairs here -->
+        </select>
+      </div>
+      <div class="trade-option">
+        <label for="price">Price</label>
+        <input type="number" id="price" placeholder="Enter price" required>
+      </div>
+      <div class="trade-option">
+        <label for="amount">Amount</label>
+        <input type="number" id="amount" placeholder="Enter amount" required>
+      </div>
+      <div class="trade-option">
+        <button id="buy-btn">Buy</button>
+        <button id="sell-btn">Sell</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="index.html" class="nav-item">
+      <span>Home</span>
+    </a>
+    <a href="market.html" class="nav-item">
+      <span>Market</span>
+    </a>
+    <a href="trade.html" class="nav-item active">
+      <span>Trade</span>
+    </a>
+    <a href="assets.html" class="nav-item">
+      <span>Assets</span>
+    </a>
+    <a href="account.html" class="nav-item">
+      <span>Account</span>
+    </a>
+  </nav>
+
+  <script src="../js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+/* === Reset and Body === */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+}
+
+body {
+  background: #0b0e11;
+  color: #eaecef;
+  padding-bottom: 70px;
+}
+
+/* === Banner === */
+.banner img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+}
+
+/* === Market List === */
+.market-list {
+  padding: 16px;
+}
+
+.market-list h3 {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.market-list ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.market-list li {
+  font-size: 13px;
+  padding: 8px 0;
+  border-bottom: 1px solid #1e2329;
+}
+
+.market-list li:hover {
+  background-color: #161a1e;
+  cursor: pointer;
+}
+
+/* === Bottom Navigation === */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: #0b0e11;
+  display: flex;
+  border-top: 1px solid #1e2329;
+}
+
+.nav-item {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  color: #848e9c;
+  text-decoration: none;
+  padding-top: 6px;
+}
+
+.nav-item i {
+  display: block;
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+
+.nav-item.active {
+  color: #f0b90b;
+}

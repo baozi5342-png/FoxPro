@@ -1,0 +1,132 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+}
+
+body {
+  background: #0b0e11;
+  color: #eaecef;
+  padding-bottom: 70px;
+}
+
+/* 顶部 */
+.top-header {
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #1e2329;
+}
+
+.logo {
+  font-size: 18px;
+  font-weight: bold;
+  color: #f0b90b;
+}
+
+/* Banner */
+.banner img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+}
+
+/* 公告 */
+.notice {
+  display: flex;
+  align-items: center;
+  background: #111;
+  padding: 8px 12px;
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.notice i {
+  margin-right: 8px;
+  color: #f0b90b;
+}
+
+.marquee span {
+  white-space: nowrap;
+  animation: scroll 12s linear infinite;
+}
+
+@keyframes scroll {
+  from { transform: translateX(100%); }
+  to { transform: translateX(-100%); }
+}
+
+/* 功能区 */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+.feature-item {
+  background: #161a1e;
+  border-radius: 10px;
+  padding: 14px 4px;
+  text-align: center;
+  font-size: 12px;
+}
+
+/* 热门币种 */
+.hot-coins {
+  padding: 16px;
+}
+
+.hot-coins h3 {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.coin-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #1e2329;
+  font-size: 13px;
+}
+
+.up {
+  color: #0ecb81;
+}
+
+.down {
+  color: #f6465d;
+}
+
+/* 底部导航 */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: #0b0e11;
+  display: flex;
+  border-top: 1px solid #1e2329;
+}
+
+.nav-item {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  color: #848e9c;
+  text-decoration: none;
+  padding-top: 6px;
+}
+
+.nav-item i {
+  display: block;
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+
+.nav-item.active {
+  color: #f0b90b;
+}
