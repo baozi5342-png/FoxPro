@@ -300,11 +300,11 @@
     <!-- 侧边栏 -->
     <div class="admin-sidebar">
       <div class="sidebar-item active" onclick="switchSection('dashboard')">📊 仪表板</div>
-      <div class="sidebar-item" onclick="switchSection('content')">📝 内容管理</div>
+      <div class="sidebar-item" onclick="switchSection('pages')">📄 页面管理</div>
       <div class="sidebar-item" onclick="switchSection('users')">👥 用户管理</div>
       <div class="sidebar-item" onclick="switchSection('orders')">📦 订单管理</div>
       <div class="sidebar-item" onclick="switchSection('verification')">✅ 身份验证</div>
-      <div class="sidebar-item" onclick="switchSection('settings')">⚙️系统设置</div>
+      <div class="sidebar-item" onclick="switchSection('settings')">⚙️ 系统设置</div>
     </div>
 
     <!-- 主内容区 -->
@@ -332,34 +332,93 @@
         </div>
       </div>
 
-      <!-- 内容管理 -->
-      <div id="content" class="section">
-        <div class="section-title">内容管理</div>
-        <div id="message"></div>
+      <!-- 页面管理 -->
+      <div id="pages" class="section">
+        <div class="section-title">页面管理</div>
+        <div id="messagePages"></div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-          <!-- 首页内容 -->
-          <div>
-            <h3 style="margin-bottom: 16px;">首页内容</h3>
-            <div class="form-group">
-              <label>标题</label>
-              <input type="text" id="homeTitle" placeholder="输入首页标题">
-            </div>
-            <div class="form-group">
-              <label>描述</label>
-              <textarea id="homeDesc" placeholder="输入首页描述"></textarea>
-            </div>
-            <button class="btn btn-primary" onclick="saveContent('home')">保存首页内容</button>
+        <!-- 页面选择 -->
+        <div style="margin-bottom: 24px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn btn-primary" onclick="selectPage('home')" id="btnHome">首页</button>
+          <button class="btn" onclick="selectPage('about')" id="btnAbout">关于我们</button>
+          <button class="btn" onclick="selectPage('market')" id="btnMarket">行情</button>
+          <button class="btn" onclick="selectPage('trade')" id="btnTrade">交易</button>
+          <button class="btn" onclick="selectPage('assets')" id="btnAssets">资产</button>
+          <button class="btn" onclick="selectPage('account')" id="btnAccount">账户</button>
+          <button class="btn" onclick="selectPage('recharge')" id="btnRecharge">充值</button>
+          <button class="btn" onclick="selectPage('withdraw')" id="btnWithdraw">提现</button>
+          <button class="btn" onclick="selectPage('customer-support')" id="btnSupport">客服支持</button>
+          <button class="btn" onclick="selectPage('terms')" id="btnTerms">服务条款</button>
+        </div>
+
+        <!-- 页面内容编辑 -->
+        <div id="pageEditor" style="display: none; border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+          <h3 style="margin-bottom: 16px;" id="pageTitle">编辑页面内容</h3>
+          
+          <!-- 页面标题 -->
+          <div class="form-group">
+            <label>页面标题</label>
+            <input type="text" id="pageHeading" placeholder="输入页面标题">
           </div>
 
-          <!-- 关于我们 -->
-          <div>
-            <h3 style="margin-bottom: 16px;">关于我们</h3>
+          <!-- 页面描述/副标题 -->
+          <div class="form-group">
+            <label>页面描述</label>
+            <textarea id="pageDescription" placeholder="输入页面描述或副标题"></textarea>
+          </div>
+
+          <!-- 主要内容 -->
+          <div class="form-group">
+            <label>主要内容</label>
+            <textarea id="pageContent" placeholder="输入主要内容" style="min-height: 150px;"></textarea>
+          </div>
+
+          <!-- 页面按钮/功能文本 -->
+          <div class="form-group">
+            <label>按钮/功能文本</label>
+            <textarea id="pageButtons" placeholder="输入按钮或功能相关的文本（JSON格式可选）" style="min-height: 100px;"></textarea>
+          </div>
+
+          <!-- 页面样式/主题设置 -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
             <div class="form-group">
-              <label>关于内容</label>
-              <textarea id="aboutContent" placeholder="输入关于我们的内容"></textarea>
+              <label>主题颜色</label>
+              <input type="color" id="pageThemeColor" value="#3b82f6">
             </div>
-            <button class="btn btn-primary" onclick="saveContent('about')">保存关于内容</button>
+            <div class="form-group">
+              <label>页面状态</label>
+              <select id="pageStatus">
+                <option value="active">激活</option>
+                <option value="maintenance">维护中</option>
+                <option value="disabled">禁用</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- SEO设置 -->
+          <div class="form-group">
+            <label>SEO关键词</label>
+            <input type="text" id="pageSeoKeywords" placeholder="输入关键词（逗号分隔）">
+          </div>
+
+          <div class="form-group">
+            <label>SEO描述</label>
+            <textarea id="pageSeoDescription" placeholder="输入SEO元描述"></textarea>
+          </div>
+
+          <!-- 操作按钮 -->
+          <div style="display: flex; gap: 12px;">
+            <button class="btn btn-primary" onclick="savePage()">保存页面内容</button>
+            <button class="btn" onclick="resetPageForm()" style="background: var(--panel-2); color: var(--text);">重置</button>
+            <button class="btn btn-danger" onclick="deletePage()">删除页面</button>
+          </div>
+        </div>
+
+        <!-- 页面预览 -->
+        <div id="pagePreview" style="margin-top: 24px; border: 1px solid var(--border); border-radius: 8px; padding: 20px; background: var(--panel-2);">
+          <h4 style="margin-bottom: 16px;">页面预览</h4>
+          <div id="previewContent" style="color: var(--muted); font-size: 13px;">
+            选择页面以预览和编辑内容
           </div>
         </div>
       </div>
@@ -480,7 +539,10 @@
       if (sectionId === 'users') loadUsers();
       if (sectionId === 'orders') loadOrders();
       if (sectionId === 'verification') loadVerifications();
-      if (sectionId === 'content') loadContent();
+      if (sectionId === 'pages') {
+        document.getElementById('pageEditor').style.display = 'none';
+        document.getElementById('previewContent').textContent = '选择页面以预览和编辑内容';
+      }
     }
 
     async function loadDashboard() {
@@ -580,54 +642,175 @@
       }
     }
 
-    async function loadContent() {
+    // ============ 页面管理功能 ============
+    let currentPage = null;
+    const pageList = [
+      { id: 'home', name: '首页', filename: 'index.html' },
+      { id: 'about', name: '关于我们', filename: 'about.html' },
+      { id: 'market', name: '行情', filename: 'market.html' },
+      { id: 'trade', name: '交易', filename: 'trade.html' },
+      { id: 'assets', name: '资产', filename: 'assets.html' },
+      { id: 'account', name: '账户', filename: 'account.html' },
+      { id: 'recharge', name: '充值', filename: 'recharge.html' },
+      { id: 'withdraw', name: '提现', filename: 'withdraw.html' },
+      { id: 'customer-support', name: '客服支持', filename: 'customer-support.html' },
+      { id: 'terms', name: '服务条款', filename: 'terms.html' }
+    ];
+
+    function selectPage(pageId) {
+      currentPage = pageId;
+      
+      // 更新按钮样式
+      document.querySelectorAll('#pages .btn').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.style.background = 'var(--panel-2)';
+        btn.style.color = 'var(--text)';
+      });
+      const selectedBtn = document.getElementById(`btn${pageId.charAt(0).toUpperCase() + pageId.slice(1).replace('-', '')}`);
+      if (selectedBtn) {
+        selectedBtn.classList.add('btn-primary');
+        selectedBtn.style.background = 'var(--primary)';
+      }
+
+      // 显示编辑器
+      document.getElementById('pageEditor').style.display = 'block';
+      loadPageContent(pageId);
+    }
+
+    async function loadPageContent(pageId) {
       try {
         const token = localStorage.getItem('adminToken');
-        const response = await fetch(`${API_BASE}/admin/content`, {
+        const response = await fetch(`${API_BASE}/admin/pages/${pageId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
         
         if (data.success && data.data) {
-          document.getElementById('homeTitle').value = data.data.homeTitle || '';
-          document.getElementById('homeDesc').value = data.data.homeDesc || '';
-          document.getElementById('aboutContent').value = data.data.aboutContent || '';
+          const pageContent = data.data;
+          document.getElementById('pageTitle').textContent = `编辑 - ${pageContent.title || pageId}`;
+          document.getElementById('pageHeading').value = pageContent.heading || '';
+          document.getElementById('pageDescription').value = pageContent.description || '';
+          document.getElementById('pageContent').value = pageContent.content || '';
+          document.getElementById('pageButtons').value = pageContent.buttons ? JSON.stringify(pageContent.buttons, null, 2) : '';
+          document.getElementById('pageThemeColor').value = pageContent.themeColor || '#3b82f6';
+          document.getElementById('pageStatus').value = pageContent.status || 'active';
+          document.getElementById('pageSeoKeywords').value = pageContent.seoKeywords || '';
+          document.getElementById('pageSeoDescription').value = pageContent.seoDescription || '';
+
+          // 更新预览
+          updatePagePreview(pageContent);
+        } else {
+          // 新建页面
+          resetPageForm();
+          document.getElementById('pageTitle').textContent = `编辑 - ${pageId}`;
         }
       } catch (error) {
-        console.error('Error loading content:', error);
+        console.error('Error loading page content:', error);
+        resetPageForm();
       }
     }
 
-    async function saveContent(type) {
+    function updatePagePreview(pageContent) {
+      const preview = `
+        <div style="color: var(--text);">
+          <h2 style="color: var(--primary); margin-bottom: 10px;">${pageContent.heading || '页面标题'}</h2>
+          <p style="color: var(--muted); margin-bottom: 16px;">${pageContent.description || '页面描述'}</p>
+          <div style="white-space: pre-wrap; font-size: 12px; color: var(--muted);">
+            ${(pageContent.content || '无内容').substring(0, 200)}${pageContent.content && pageContent.content.length > 200 ? '...' : ''}
+          </div>
+        </div>
+      `;
+      document.getElementById('previewContent').innerHTML = preview;
+    }
+
+    async function savePage() {
+      if (!currentPage) {
+        alert('请先选择页面');
+        return;
+      }
+
       try {
         const token = localStorage.getItem('adminToken');
-        let payload = {};
-        
-        if (type === 'home') {
-          payload = {
-            homeTitle: document.getElementById('homeTitle').value,
-            homeDesc: document.getElementById('homeDesc').value
-          };
-        } else if (type === 'about') {
-          payload = {
-            aboutContent: document.getElementById('aboutContent').value
-          };
-        }
+        const pageData = {
+          heading: document.getElementById('pageHeading').value,
+          description: document.getElementById('pageDescription').value,
+          content: document.getElementById('pageContent').value,
+          buttons: document.getElementById('pageButtons').value ? JSON.parse(document.getElementById('pageButtons').value) : {},
+          themeColor: document.getElementById('pageThemeColor').value,
+          status: document.getElementById('pageStatus').value,
+          seoKeywords: document.getElementById('pageSeoKeywords').value,
+          seoDescription: document.getElementById('pageSeoDescription').value
+        };
 
-        const response = await fetch(`${API_BASE}/admin/content`, {
+        const response = await fetch(`${API_BASE}/admin/pages/${currentPage}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(pageData)
         });
-        
+
         const data = await response.json();
-        showMessage(data.message || '保存成功！', 'success');
+        if (data.success) {
+          showMessagePages('页面内容已保存！', 'success');
+          updatePagePreview(pageData);
+        } else {
+          showMessagePages(data.message || '保存失败', 'error');
+        }
       } catch (error) {
-        showMessage('保存失败！', 'error');
+        console.error('Error saving page:', error);
+        showMessagePages('保存出错，请检查JSON格式', 'error');
       }
+    }
+
+    function resetPageForm() {
+      document.getElementById('pageHeading').value = '';
+      document.getElementById('pageDescription').value = '';
+      document.getElementById('pageContent').value = '';
+      document.getElementById('pageButtons').value = '';
+      document.getElementById('pageThemeColor').value = '#3b82f6';
+      document.getElementById('pageStatus').value = 'active';
+      document.getElementById('pageSeoKeywords').value = '';
+      document.getElementById('pageSeoDescription').value = '';
+    }
+
+    async function deletePage() {
+      if (!currentPage) {
+        alert('请先选择页面');
+        return;
+      }
+
+      if (!confirm('确定要删除此页面的内容吗？这不会删除HTML文件。')) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE}/admin/pages/${currentPage}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessagePages('页面内容已删除', 'success');
+          resetPageForm();
+        } else {
+          showMessagePages(data.message || '删除失败', 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting page:', error);
+        showMessagePages('删除出错', 'error');
+      }
+    }
+
+    function showMessagePages(msg, type) {
+      const messageEl = document.getElementById('messagePages');
+      messageEl.innerHTML = `<div class="message ${type}">${msg}</div>`;
+      setTimeout(() => {
+        messageEl.innerHTML = '';
+      }, 3000);
     }
 
     async function saveSettings() {

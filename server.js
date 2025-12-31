@@ -6207,3 +6207,191 @@ app.post("/api/admin/settings", (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// ===================== 页面管理接口 =====================
+
+/**
+ * GET /api/admin/pages/:pageId
+ * 获取页面内容
+ */
+app.get("/api/admin/pages/:pageId", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const { pageId } = req.params;
+
+    // 初始化表
+    try {
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS page_contents (
+          id INTEGER PRIMARY KEY,
+          pageId TEXT UNIQUE,
+          heading TEXT,
+          description TEXT,
+          content TEXT,
+          buttons TEXT,
+          themeColor TEXT DEFAULT '#3b82f6',
+          status TEXT DEFAULT 'active',
+          seoKeywords TEXT,
+          seoDescription TEXT,
+          updatedAt DATETIME
+        )
+      `).run();
+    } catch (e) {}
+
+    const pageContent = db.prepare("SELECT * FROM page_contents WHERE pageId = ?").get(pageId);
+
+    if (pageContent) {
+      // 解析JSON字段
+      const parsed = {
+        ...pageContent,
+        buttons: pageContent.buttons ? JSON.parse(pageContent.buttons) : {}
+      };
+      res.json({ success: true, data: parsed });
+    } else {
+      res.json({ success: true, data: null });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/pages/:pageId
+ * 保存页面内容
+ */
+app.post("/api/admin/pages/:pageId", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const { pageId } = req.params;
+    const { heading, description, content, buttons, themeColor, status, seoKeywords, seoDescription } = req.body;
+
+    // 初始化表
+    try {
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS page_contents (
+          id INTEGER PRIMARY KEY,
+          pageId TEXT UNIQUE,
+          heading TEXT,
+          description TEXT,
+          content TEXT,
+          buttons TEXT,
+          themeColor TEXT DEFAULT '#3b82f6',
+          status TEXT DEFAULT 'active',
+          seoKeywords TEXT,
+          seoDescription TEXT,
+          updatedAt DATETIME
+        )
+      `).run();
+    } catch (e) {}
+
+    const existing = db.prepare("SELECT * FROM page_contents WHERE pageId = ?").get(pageId);
+    const now = new Date().toISOString();
+    const buttonsJson = buttons ? JSON.stringify(buttons) : null;
+
+    if (existing) {
+      db.prepare(`
+        UPDATE page_contents 
+        SET heading = ?, description = ?, content = ?, buttons = ?, 
+            themeColor = ?, status = ?, seoKeywords = ?, seoDescription = ?, updatedAt = ?
+        WHERE pageId = ?
+      `).run(heading, description, content, buttonsJson, themeColor, status, seoKeywords, seoDescription, now, pageId);
+    } else {
+      db.prepare(`
+        INSERT INTO page_contents 
+        (pageId, heading, description, content, buttons, themeColor, status, seoKeywords, seoDescription, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(pageId, heading, description, content, buttonsJson, themeColor, status, seoKeywords, seoDescription, now);
+    }
+
+    res.json({ success: true, message: "页面内容已保存" });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/pages/:pageId
+ * 删除页面内容
+ */
+app.delete("/api/admin/pages/:pageId", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const { pageId } = req.params;
+
+    db.prepare("DELETE FROM page_contents WHERE pageId = ?").run(pageId);
+
+    res.json({ success: true, message: "页面内容已删除" });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/pages
+ * 获取所有页面内容列表
+ */
+app.get("/api/admin/pages", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    // 初始化表
+    try {
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS page_contents (
+          id INTEGER PRIMARY KEY,
+          pageId TEXT UNIQUE,
+          heading TEXT,
+          description TEXT,
+          content TEXT,
+          buttons TEXT,
+          themeColor TEXT DEFAULT '#3b82f6',
+          status TEXT DEFAULT 'active',
+          seoKeywords TEXT,
+          seoDescription TEXT,
+          updatedAt DATETIME
+        )
+      `).run();
+    } catch (e) {}
+
+    const pages = db.prepare("SELECT pageId, heading, status, updatedAt FROM page_contents ORDER BY updatedAt DESC").all();
+
+    res.json({ success: true, data: pages });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
