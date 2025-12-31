@@ -192,6 +192,7 @@
     </div>
 
     <script src="auth.js"></script>
+    <script src="page-manager.js"></script>
     <script>
       function updateAuthDisplay() {
         const authButtons = document.getElementById('authButtons');
@@ -242,6 +243,14 @@
         updateNavbar();
         updateAuthDisplay();
         loadSupportLink();
+        
+        // 初始化页面管理 - 从后台加载首页内容
+        initPageManager({
+          heading: '.home-hero h1',
+          description: '.home-hero p',
+          content: '.home-card'
+        });
+        
         document.querySelectorAll('.main-nav .nav-link').forEach(item => {
           const href = item.getAttribute('href');
           if (href === 'index.html') {
