@@ -734,7 +734,7 @@
         </div>
 
         <!-- Pair Info -->
-        <div class="trade-card pair-info">
+        <div class="trade-card pair-info" style="display: none;" id="pairInfoCard">
           <h3>Pair Info</h3>
           <div style="font-size: 12px;">
             <div style="display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 12px;">
@@ -757,7 +757,7 @@
         </div>
 
         <!-- Order History -->
-        <div class="trade-card order-history">
+        <div class="trade-card order-history" style="display: none;" id="orderHistoryCard">
           <h3>Order History</h3>
           <div style="font-size: 12px; color: var(--muted);">No active orders</div>
         </div>
@@ -1292,15 +1292,21 @@
         const user = getCurrentUser();
         const loginPrompt = document.getElementById('loginPrompt');
         const tradeContainer = document.querySelector('.trade-container');
+        const pairInfoCard = document.getElementById('pairInfoCard');
+        const orderHistoryCard = document.getElementById('orderHistoryCard');
         
         if (user) {
           // User is logged in
           if (loginPrompt) loginPrompt.style.display = 'none';
           if (tradeContainer) tradeContainer.style.display = 'block';
+          if (pairInfoCard) pairInfoCard.style.display = 'block';
+          if (orderHistoryCard) orderHistoryCard.style.display = 'block';
         } else {
           // User is not logged in
           if (loginPrompt) loginPrompt.style.display = 'block';
           if (tradeContainer) tradeContainer.style.display = 'none';
+          if (pairInfoCard) pairInfoCard.style.display = 'none';
+          if (orderHistoryCard) orderHistoryCard.style.display = 'none';
         }
         
         startQuickCountdown();

@@ -5958,3 +5958,252 @@ app.post("/api/admin/adjust-balance", (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ===================== 管理员登录接口 =====================
+app.post("/api/auth/admin-login", (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: "用户名和密码不能为空" });
+  }
+
+  try {
+    // 检查管理员账号（演示账号：admin/admin123）
+    const isValidAdmin = (username === 'admin' && password === 'admin123');
+    
+    if (!isValidAdmin) {
+      return res.status(401).json({ success: false, message: "管理员用户名或密码不正确" });
+    }
+
+    // 生成管理员token
+    const adminToken = jwt.sign({ id: 'admin', isAdmin: true }, JWT_SECRET, { expiresIn: '24h' });
+
+    res.json({
+      success: true,
+      message: "登录成功",
+      token: adminToken,
+      user: {
+        id: 'admin',
+        username: 'admin',
+        isAdmin: true
+      }
+    });
+  } catch (err) {
+    console.error("Admin login error:", err);
+    res.status(500).json({ success: false, message: "服务器错误" });
+  }
+});
+
+// ===================== 管理员统计接口 =====================
+app.get("/api/admin/stats", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users").get().count;
+    const totalOrders = db.prepare("SELECT COUNT(*) as count FROM quick_contract_orders").get().count;
+    const pendingVerifications = db.prepare("SELECT COUNT(*) as count FROM account_verification WHERE status = 'pending'").get().count;
+
+    res.json({
+      success: true,
+      stats: {
+        totalUsers,
+        totalOrders,
+        pendingVerifications,
+        totalRevenue: '10000'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ===================== 获取所有用户 =====================
+app.get("/api/admin/users", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const users = db.prepare("SELECT id, username, email, phone, createdAt FROM users LIMIT 100").all();
+    
+    res.json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ===================== 获取所有订单 =====================
+app.get("/api/admin/quick-contract/orders", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const orders = db.prepare(`
+      SELECT qco.*, u.username 
+      FROM quick_contract_orders qco
+      JOIN users u ON qco.user_id = u.id
+      ORDER BY qco.created_at DESC
+      LIMIT 100
+    `).all();
+    
+    res.json({
+      success: true,
+      data: orders.map(order => ({
+        id: order.id,
+        username: order.username,
+        amount: order.amount,
+        direction: order.direction,
+        period: order.period,
+        status: order.status,
+        profit: order.profit,
+        createdAt: order.created_at
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ===================== 身份验证管理 =====================
+app.get("/api/admin/verifications", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const verifications = db.prepare(`
+      SELECT av.*, u.username
+      FROM account_verification av
+      JOIN users u ON av.user_id = u.id
+      ORDER BY av.submitted_at DESC
+    `).all();
+    
+    res.json({
+      success: true,
+      data: verifications.map(v => ({
+        id: v.id,
+        username: v.username,
+        type: v.verification_type,
+        status: v.status,
+        submittedAt: v.submitted_at
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ===================== 内容管理接口 =====================
+app.get("/api/admin/content", (req, res) => {
+  try {
+    const content = db.prepare("SELECT * FROM site_content LIMIT 1").get();
+    res.json({
+      success: true,
+      data: content || {
+        homeTitle: 'FoxPro Exchange',
+        homeDesc: '专业的数字资产交易平台',
+        aboutContent: '...'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/admin/content", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const { homeTitle, homeDesc, aboutContent } = req.body;
+
+    // 初始化表（如果不存在）
+    try {
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS site_content (
+          id INTEGER PRIMARY KEY,
+          homeTitle TEXT,
+          homeDesc TEXT,
+          aboutContent TEXT,
+          updatedAt DATETIME
+        )
+      `).run();
+    } catch (e) {}
+
+    const existing = db.prepare("SELECT * FROM site_content LIMIT 1").get();
+    
+    if (existing) {
+      db.prepare("UPDATE site_content SET homeTitle = ?, homeDesc = ?, aboutContent = ?, updatedAt = ?")
+        .run(homeTitle, homeDesc, aboutContent, new Date().toISOString());
+    } else {
+      db.prepare("INSERT INTO site_content (homeTitle, homeDesc, aboutContent, updatedAt) VALUES (?, ?, ?, ?)")
+        .run(homeTitle, homeDesc, aboutContent, new Date().toISOString());
+    }
+
+    res.json({
+      success: true,
+      message: "内容已保存"
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ===================== 系统设置接口 =====================
+app.post("/api/admin/settings", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    res.json({
+      success: true,
+      message: "设置已保存"
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
