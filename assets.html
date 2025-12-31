@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Assets - FoxPro Exchange</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .app {
+        max-width: var(--container-max);
+        margin: 0 auto;
+        padding: 0 16px 48px;
+      }
+
+      .assets-header {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .total-balance {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .balance-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--text);
+      }
+
+      .balance-label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .balance-toggle {
+        background: none;
+        border: none;
+        color: var(--primary);
+        cursor: pointer;
+        font-size: 18px;
+      }
+
+      .balance-info {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .balance-item {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .balance-item-label {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+
+      .balance-item-value {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .assets-tabs {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 12px;
+      }
+
+      .assets-tab {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        padding-bottom: 8px;
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s ease;
+      }
+
+      .assets-tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+      }
+
+      .assets-section {
+        display: none;
+      }
+
+      .assets-section.active {
+        display: block;
+      }
+
+      .asset-item {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        align-items: center;
+      }
+
+      .asset-item-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .asset-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--panel-2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+      }
+
+      .asset-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 2px;
+      }
+
+      .asset-symbol {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .asset-item-right {
+        text-align: right;
+      }
+
+      .asset-amount {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+
+      .asset-value {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .asset-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .asset-actions button {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid var(--border);
+        background: none;
+        color: var(--text);
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .asset-actions button:hover {
+        background: var(--panel-2);
+      }
+
+      .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .quick-action-btn {
+        padding: 10px 16px;
+        background: var(--primary);
+        border: none;
+        color: white;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .quick-action-btn:hover {
+        opacity: 0.8;
+      }
+
+      .btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .btn.primary {
+        background: var(--primary);
+        color: white;
+      }
+
+      .btn.ghost {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="topbar-header">
+          <div class="topbar-left">
+            <div class="logo">FoxPro<span>Exchange</span></div>
+          </div>
+          <div class="topbar-right">
+            <button class="btn ghost" id="logoutBtn" style="display: none;" onclick="logout()">Log Out</button>
+            <a href="#" id="supportLink" title="Customer Support" style="color: var(--primary); font-size: 18px; text-decoration: none; display: none; margin-right: 12px;">
+              💬
+            </a>
+            <span id="userInfo" style="display: none; color: var(--text); margin-right: 15px;"><span id="username"></span></span>
+          </div>
+        </div>
+        <div class="topbar-nav-wrapper">
+          <nav class="main-nav">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="market.html" class="nav-link">Markets</a>
+            <a href="trade.html" class="nav-link">Trade</a>
+            <a href="assets.html" class="nav-link active">Assets</a>
+            <a href="account.html" class="nav-link">Account</a>
+          </nav>
+        </div>
+      </header>
+
+      <!-- Login Prompt -->
+      <div id="loginPrompt" style="text-align: center; padding: 40px 20px; background: rgba(59, 130, 246, 0.08); border-radius: 12px; margin-bottom: 20px;">
+        <h2 style="font-size: 20px; margin-bottom: 12px;">Sign in to manage your assets</h2>
+        <p style="color: var(--muted); margin-bottom: 16px; font-size: 14px;">View your balance, deposit, withdraw, and manage your portfolio</p>
+        <div style="display: flex; gap: 12px;">
+          <button class="btn" style="flex: 1; background: var(--primary); color: white; padding: 12px 32px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;" onclick="window.location.href='login.html'">Sign In</button>
+          <button class="btn" style="flex: 1; background: none; border: 2px solid var(--primary); color: var(--primary); padding: 10px 30px; border-radius: 8px; cursor: pointer; font-weight: 600;" onclick="window.location.href='register.html'">Create Account</button>
+        </div>
+      </div>
+
+      <div id="content-area" style="display: none;">
+      <div class="assets-layout">
+        <div class="assets-main">
+          <!-- Account Summary - Top -->
+          <div class="assets-summary-card">
+            <h3 style="margin-bottom:16px; font-size: 18px;">Account Summary</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+              <div>
+                <div style="font-size: 13px; color: var(--muted); margin-bottom: 6px;">Total Assets</div>
+                <div style="font-weight: 700; font-size: 28px; color: var(--accent);" id="totalBalance">$0.00</div>
+              </div>
+              <div>
+                <div style="font-size: 13px; color: var(--muted); margin-bottom: 6px;">Available Balance</div>
+                <div style="font-weight: 700; font-size: 28px; color: #00d084;" id="availableBalance">$0.00</div>
+              </div>
+              <div>
+                <div style="font-size: 13px; color: var(--muted); margin-bottom: 6px;">Locked Amount</div>
+                <div style="font-weight: 700; font-size: 20px; color: #ff6b6b;" id="lockedBalance">$0.00</div>
+              </div>
+              <div>
+                <div style="font-size: 13px; color: var(--muted); margin-bottom: 6px;">Wealth Assets</div>
+                <div style="font-weight: 700; font-size: 20px; color: #4ecdc4;" id="wealthBalance">$0.00</div>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <button class="btn btn-primary" onclick="window.location.href='recharge.html'" style="padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">充值</button>
+              <button class="btn btn-ghost" onclick="window.location.href='withdraw.html'" style="padding: 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-weight: 600; background: transparent;">提现</button>
+            </div>
+          </div>
+
+
+          <div class="assets-tabs">
+            <button class="assets-tab active" onclick="switchAssetsTab('platform', this)">Platform Assets</button>
+            <button class="assets-tab" onclick="switchAssetsTab('wealth', this)">Wealth Management</button>
+          </div>
+
+          <!-- Platform Assets -->
+          <div class="assets-section active" id="platform-section">
+          </div>
+
+          <!-- Wealth Management -->
+          <div class="assets-section" id="wealth-section">
+            <div style="padding: 20px 0;">
+              <!-- User Wealth Orders -->
+              <div style="margin-bottom: 30px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                  <h3 style="margin: 0; font-size: 16px;">My Wealth Products</h3>
+                  <button onclick="reloadWealthData()" style="padding: 6px 12px; background: var(--accent-secondary); border: none; border-radius: 6px; color: var(--text); cursor: pointer; font-size: 12px; font-weight: 600;">刷新</button>
+                </div>
+                <div id="wealthOrdersList" style="display: grid; gap: 12px;"></div>
+              </div>
+
+              <!-- Wealth Products List -->
+              <div>
+                <h3 style="margin-bottom: 16px; font-size: 16px;">Wealth Products</h3>
+                <div id="wealthProductsList" style="display: grid; gap: 12px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+      function switchAssetsTab(tab, btn) {
+        document.querySelectorAll('.assets-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+
+        document.querySelectorAll('#platform-section, #wealth-section').forEach(el => {
+          el.classList.remove('active');
+        });
+
+        if (tab === 'platform') {
+          document.getElementById('platform-section').classList.add('active');
+        } else {
+          document.getElementById('wealth-section').classList.add('active');
+        }
+      }
+
+      async function loadSupportLink() {
+        try {
+          const supportLink = document.getElementById('supportLink');
+          if (supportLink) {
+            supportLink.href = 'customer-support.html';
+            supportLink.style.display = 'inline-block';
+            supportLink.title = 'Customer Support';
+          }
+        } catch (error) {
+          console.error('Error loading support link:', error);
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        console.log('[Assets] ========== Page Loaded ==========');
+        updateNavbar();
+        loadSupportLink();
+        document.querySelectorAll('.main-nav .nav-link').forEach(item => {
+          if (item.getAttribute('href') === 'assets.html') {
+            item.classList.add('active');
+          } else {
+            item.classList.remove('active');
+          }
+        });
+        
+        // Check login status
+        const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+        const user = getCurrentUser();
+        const loginPrompt = document.getElementById('loginPrompt');
+        const contentArea = document.getElementById('content-area');
+        
+        console.log('[Assets] Token in storage:', token ? 'YES' : 'NO');
+        console.log('[Assets] User object:', user ? user.username : 'null');
+        
+        if (token && user) {
+          // User is authenticated
+          console.log('[Assets] ✓ User authenticated:', user.username);
+          console.log('[Assets] Showing content area');
+          
+          // 立即显示内容区域
+          if (loginPrompt) loginPrompt.style.display = 'none';
+          if (contentArea) contentArea.style.display = 'block';
+          
+          // 在后台加载资产数据
+          console.log('[Assets] Loading assets in background...');
+          await loadUserAssets();
+        } else {
+          // User is not authenticated
+          console.log('[Assets] ✗ User NOT authenticated');
+          console.log('[Assets] Showing login prompt');
+          if (loginPrompt) loginPrompt.style.display = 'block';
+          if (contentArea) contentArea.style.display = 'none';
+        }
+        console.log('[Assets] ========== Init Complete ==========');
+      });
+
+      async function loadUserAssets() {
+        try {
+          const token = localStorage.getItem('token');
+          console.log('[Assets] Loading user assets - Token:', token ? 'EXISTS' : 'MISSING');
+          
+          if (!token) {
+            console.error('[Assets] No token found. User must login.');
+            document.getElementById('loginPrompt').style.display = 'block';
+            document.getElementById('content-area').style.display = 'none';
+            return;
+          }
+
+          console.log('[Assets] Fetching from API...');
+          const response = await fetch(`${API_BASE}/assets`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          console.log('[Assets] API Response Status:', response.status);
+
+          if (!response.ok) {
+            console.error('[Assets] API returned error:', response.status);
+            // 显示空资产列表而不是登录提示
+            renderAssets([]);
+            return;
+          }
+
+          const data = await response.json();
+          console.log('[Assets] Data received:', data);
+          
+          if (data.assets && Array.isArray(data.assets)) {
+            console.log('[Assets] Rendering', data.assets.length, 'assets');
+            renderAssets(data.assets);
+          } else {
+            console.warn('[Assets] No assets array in response, showing empty list');
+            renderAssets([]);
+          }
+        } catch (error) {
+          console.error('[Assets] Error loading assets:', error);
+          // 显示空资产列表而不是登录提示
+          renderAssets([]);
+        }
+      }
+
+      function renderAssets(assets) {
+        const platformSection = document.getElementById('platform-section');
+        if (!platformSection) return;
+
+        // 定义所有支持的币种
+        const allAssets = {
+          'BTC': { name: 'Bitcoin', icon: '₿' },
+          'ETH': { name: 'Ethereum', icon: 'Ξ' },
+          'USDT': { name: 'Tether', icon: '🟢' },
+          'SOL': { name: 'Solana', icon: '◎' },
+          'ADA': { name: 'Cardano', icon: '₳' },
+          'XRP': { name: 'Ripple', icon: '✕' },
+          'DOGE': { name: 'Dogecoin', icon: '🐕' },
+          'LTC': { name: 'Litecoin', icon: '◆' }
+        };
+
+        const prices = {
+          'BTC': '94500',
+          'ETH': '3200',
+          'USDT': '1',
+          'SOL': '180',
+          'ADA': '1.2',
+          'XRP': '3.5',
+          'DOGE': '0.42',
+          'LTC': '200'
+        };
+
+        // 创建一个 map 以便快速查找用户的资产
+        const userAssetMap = {};
+        if (assets && Array.isArray(assets)) {
+          assets.forEach(asset => {
+            userAssetMap[asset.symbol] = asset;
+          });
+        }
+
+        // Clear existing assets
+        platformSection.innerHTML = '';
+
+        let totalBalance = 0;
+
+        // 显示所有支持的币种
+        Object.entries(allAssets).forEach(([symbol, info]) => {
+          const userAsset = userAssetMap[symbol];
+          const amount = userAsset ? parseFloat(userAsset.amount) : 0;
+          const price = userAsset ? parseFloat(userAsset.price) : parseFloat(prices[symbol] || 0);
+          const value = amount * price;
+          totalBalance += value;
+
+          const assetDiv = document.createElement('div');
+          assetDiv.className = 'asset-item';
+          assetDiv.innerHTML = `
+            <div class="asset-item-left">
+              <div class="asset-icon">${info.icon}</div>
+              <div>
+                <div class="asset-name">${info.name}</div>
+                <div class="asset-symbol">${symbol}</div>
+              </div>
+            </div>
+            <div class="asset-item-right">
+              <div class="asset-amount">${amount.toFixed(8)} ${symbol}</div>
+              <div class="asset-value">$${value.toFixed(2)}</div>
+            </div>
+            <div class="asset-actions">
+              <button>Send</button>
+              <button>Receive</button>
+            </div>
+          `;
+          platformSection.appendChild(assetDiv);
+        });
+
+        // 更新余额显示
+        updateBalanceDisplay(totalBalance, totalBalance, 0);
+      }
+
+      function updateBalanceDisplay(total, available, locked) {
+        const totalEl = document.getElementById('totalBalance');
+        const availEl = document.getElementById('availableBalance');
+        const lockedEl = document.getElementById('lockedBalance');
+        const wealthEl = document.getElementById('wealthBalance');
+
+        if (totalEl) totalEl.textContent = '$' + parseFloat(total).toFixed(2);
+        if (availEl) availEl.textContent = '$' + parseFloat(available).toFixed(2);
+        if (lockedEl) lockedEl.textContent = '$' + parseFloat(locked).toFixed(2);
+        if (wealthEl) wealthEl.textContent = '$0.00'; // Placeholder, can be updated based on wealth products
+      }
+
+      // ========== 理财管理 ==========
+      let wealthLoading = false;
+
+      async function loadWealthProducts() {
+        try {
+          wealthLoading = true;
+          const response = await fetch(`${API_BASE}/api/wealth/products`);
+          const result = await response.json();
+
+          if (result.success) {
+            renderWealthProducts(result.data);
+          } else {
+            console.error('Failed to load wealth products:', result.error);
+            showWealthError('Failed to load wealth products');
+          }
+        } catch (error) {
+          console.error('Error loading wealth products:', error);
+          showWealthError('网络错误，请稍后重试');
+        } finally {
+          wealthLoading = false;
+        }
+      }
+
+      async function loadWealthOrders() {
+        try {
+          const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+          if (!token) return;
+
+          const response = await fetch(`${API_BASE}/api/wealth/orders`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const result = await response.json();
+
+          if (result.success) {
+            renderWealthOrders(result.data, result.stats);
+          } else {
+            console.error('Failed to load wealth orders:', result.error);
+          }
+        } catch (error) {
+          console.error('Error loading wealth orders:', error);
+        }
+      }
+
+      function showWealthError(message) {
+        const container = document.getElementById('wealthProductsList');
+        if (container) {
+          container.innerHTML = `<div style="padding: 20px; text-align: center; color: #ff6b6b; background: rgba(255, 107, 107, 0.1); border-radius: 8px;">${message}</div>`;
+        }
+      }
+
+      function renderWealthProducts(products) {
+        const container = document.getElementById('wealthProductsList');
+        if (!products || products.length === 0) {
+          container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--muted);">No wealth products available</div>';
+          return;
+        }
+
+        container.innerHTML = products.map(product => {
+          const riskColor = product.riskLevel === '低风险' ? '#00d084' : 
+                           product.riskLevel === '中风险' ? '#ffd93d' : 
+                           '#ff6b6b';
+          
+          return `
+          <div style="background: linear-gradient(135deg, rgba(76, 205, 196, 0.1) 0%, rgba(88, 86, 214, 0.05) 100%); border: 1px solid rgba(76, 205, 196, 0.2); border-radius: 12px; padding: 16px; transition: all 0.3s ease;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+              <div style="flex: 1;">
+                <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px;">${product.name}</div>
+                <div style="font-size: 12px; color: var(--muted);">${product.description || '稳定收益产品'}</div>
+              </div>
+              <div style="text-align: right; margin-left: 16px;">
+                <div style="font-weight: 700; font-size: 20px; color: #4ecdc4; margin-bottom: 2px;">${product.annualRate}%</div>
+                <div style="font-size: 11px; color: var(--muted);">年化利率</div>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+              <div>
+                <div style="font-size: 11px; color: var(--muted); margin-bottom: 2px;">期限</div>
+                <div style="font-size: 13px; font-weight: 600;">${product.term === 0 ? '活期' : (product.term + '天')}</div>
+              </div>
+              <div>
+                <div style="font-size: 11px; color: var(--muted); margin-bottom: 2px;">风险等级</div>
+                <div style="font-size: 13px; font-weight: 600; color: ${riskColor};">${product.riskLevel}</div>
+              </div>
+              <div>
+                <div style="font-size: 11px; color: var(--muted); margin-bottom: 2px;">投资范围</div>
+                <div style="font-size: 12px; font-weight: 600;">$${product.minAmount} - $${product.maxAmount}</div>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <input type="number" id="wealthAmount_${product.id}" placeholder="投资金额" min="${product.minAmount}" max="${product.maxAmount}" style="padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-secondary); color: var(--text); font-size: 14px; outline: none;" onkeyup="calculateWealth('${product.id}', ${product.annualRate}, ${product.term})">
+              <button onclick="purchaseWealth('${product.id}')" style="padding: 10px; background: linear-gradient(135deg, #4ecdc4, #5856d6); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: opacity 0.2s; font-size: 14px;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">购买</button>
+            </div>
+            <div id="wealthCalc_${product.id}" style="margin-top: 10px; padding: 8px; background: rgba(0,208,132,0.1); border-radius: 6px; text-align: center; font-size: 12px; color: #00d084; display: none;"></div>
+          </div>
+        `;
+        }).join('');
+      }
+
+      function calculateWealth(productId, annualRate, term) {
+        const input = document.getElementById(`wealthAmount_${product.id}`);
+        const calcDiv = document.getElementById(`wealthCalc_${productId}`);
+        const amount = parseFloat(input.value);
+
+        if (amount && amount > 0) {
+          const days = term || 1;
+          const expectedProfit = (amount * annualRate / 100) * (days / 365);
+          calcDiv.style.display = 'block';
+          calcDiv.innerHTML = `预期收益: $${expectedProfit.toFixed(2)}`;
+        } else {
+          calcDiv.style.display = 'none';
+        }
+      }
+
+      function renderWealthOrders(orders, stats) {
+        const container = document.getElementById('wealthOrdersList');
+        if (!orders || orders.length === 0) {
+          container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--muted); background: var(--bg-secondary); border-radius: 8px;">No wealth orders</div>';
+          return;
+        }
+
+        let html = '';
+        
+        // 显示统计信息
+        if (stats) {
+          html += `
+            <div style="background: linear-gradient(135deg, rgba(0, 208, 132, 0.1) 0%, rgba(76, 205, 196, 0.05) 100%); border: 1px solid rgba(0, 208, 132, 0.2); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                <div>
+                  <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase;">总投入</div>
+                  <div style="font-weight: 700; font-size: 18px; color: var(--text);">$${stats.totalAmount}</div>
+                </div>
+                <div>
+                  <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase;">预期收益</div>
+                  <div style="font-weight: 700; font-size: 18px; color: #00d084;">+$${stats.totalExpectedProfit}</div>
+                </div>
+                <div>
+                  <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase;">活跃订单</div>
+                  <div style="font-weight: 700; font-size: 18px; color: #4ecdc4;">${stats.activeOrders}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        // 显示订单列表
+        html += orders.map(order => {
+          const isActive = order.status === '进行中';
+          const statusColor = isActive ? '#00d084' : '#a0a0a0';
+          
+          return `
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 14px; transition: all 0.3s ease; ${isActive ? 'border-left: 3px solid #00d084;' : ''}">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <div>
+                <div style="font-weight: 600; font-size: 14px; margin-bottom: 2px;">${order.productName}</div>
+                <div style="font-size: 11px; color: var(--muted);">${order.startDate ? new Date(order.startDate).toLocaleDateString('zh-CN') : '-'}</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-weight: 700; color: #4ecdc4; font-size: 14px;">$${order.amount}</div>
+                <div style="font-size: 11px; color: ${statusColor}; font-weight: 600;">${order.status}</div>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;">
+              <div>
+                <div style="font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 2px;">年化利率</div>
+                <div style="font-weight: 600; font-size: 13px;">${order.annualRate}</div>
+              </div>
+              <div>
+                <div style="font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 2px;">期限</div>
+                <div style="font-weight: 600; font-size: 13px;">${order.term}</div>
+              </div>
+              <div>
+                <div style="font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 2px;">预期收益</div>
+                <div style="font-weight: 700; color: #00d084; font-size: 13px;">+$${order.expectedProfit}</div>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="flex: 1;">
+                <div style="font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 2px;">到期日期</div>
+                <div style="font-size: 12px; font-weight: 600;">${order.endDate ? new Date(order.endDate).toLocaleDateString('zh-CN') : '随时可提'}</div>
+              </div>
+              ${isActive ? `<button onclick="showRedeemConfirm('${order.id}', ${order.amount}, '${order.productName}')" style="margin-left: 12px; padding: 6px 16px; background: linear-gradient(135deg, #00d084, #3fb983); border: none; border-radius: 6px; color: white; font-size: 12px; cursor: pointer; font-weight: 600; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">提取</button>` : '<div></div>'}
+            </div>
+          </div>
+        `;
+        }).join('');
+
+        container.innerHTML = html;
+      }
+
+      function showRedeemConfirm(orderId, amount, productName) {
+        const message = `确定提取 ${productName}？\n本金: $${amount}`;
+        if (confirm(message)) {
+          redeemWealth(orderId);
+        }
+      }
+
+      async function purchaseWealth(productId) {
+        const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+        if (!token) {
+          alert('请先登录');
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const input = document.getElementById(`wealthAmount_${productId}`);
+        const amount = parseFloat(input.value);
+
+        if (!amount || amount <= 0) {
+          alert('请输入有效的投资金额');
+          return;
+        }
+
+        // 禁用按钮以防止重复提交
+        const button = event.target;
+        button.disabled = true;
+        button.style.opacity = '0.5';
+        const originalText = button.textContent;
+        button.textContent = '处理中...';
+
+        try {
+          const response = await fetch(`${API_BASE}/api/wealth/purchase`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ productId, amount })
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            alert(`✓ 购买成功！\n预期收益: $${result.expectedProfit}\n新余额: $${result.newBalance}`);
+            input.value = '';
+            const calcDiv = document.getElementById(`wealthCalc_${productId}`);
+            if (calcDiv) calcDiv.style.display = 'none';
+            loadWealthOrders();
+            // 更新资产页面的总余额
+            loadAssets();
+          } else {
+            alert('✗ 购买失败：' + (result.error || '未知错误'));
+          }
+        } catch (error) {
+          console.error('Error purchasing wealth product:', error);
+          alert('✗ 错误：' + error.message);
+        } finally {
+          button.disabled = false;
+          button.style.opacity = '1';
+          button.textContent = originalText;
+        }
+      }
+
+      async function redeemWealth(orderId) {
+        const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+        if (!token) {
+          alert('请先登录');
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE}/api/wealth/redeem`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ orderId })
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            alert(`✓ 提取成功！\n本金: $${result.principalAmount}\n收益: $${result.profit}\n合计: $${result.totalAmount}\n新余额: $${result.newBalance}`);
+            loadWealthOrders();
+            loadAssets();
+          } else {
+            alert('✗ 提取失败：' + (result.error || '未知错误'));
+          }
+        } catch (error) {
+          console.error('Error redeeming wealth product:', error);
+          alert('✗ 错误：' + error.message);
+        }
+      }
+
+      function reloadWealthData() {
+        loadWealthProducts();
+        loadWealthOrders();
+      }
+
+      // 当切换到理财tab时加载数据
+      const originalSwitchTab = window.switchAssetsTab;
+      window.switchAssetsTab = function(tab, btn) {
+        originalSwitchTab.call(this, tab, btn);
+        if (tab === 'wealth') {
+          loadWealthProducts();
+          loadWealthOrders();
+        }
+      };
+    </script>
+  </body>
+</html>

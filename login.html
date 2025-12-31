@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - FoxPro Exchange</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 320px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .login-header .logo {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .login-header .logo span {
+      color: var(--primary);
+    }
+
+    .login-header p {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .form-group input {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 13px;
+      transition: all 0.3s ease;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: var(--bg);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-group input::placeholder {
+      color: var(--muted);
+    }
+
+    .remember-forgot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .remember-forgot a {
+      color: var(--primary);
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .remember-forgot a:hover {
+      color: #60a5fa;
+      text-decoration: underline;
+    }
+
+    .remember-forgot label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .remember-forgot input[type="checkbox"] {
+      width: auto;
+      cursor: pointer;
+    }
+
+    .login-btn {
+      padding: 10px 16px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 6px;
+    }
+
+    .login-btn:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .login-btn:active {
+      transform: translateY(0);
+    }
+
+    .login-btn.loading {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .login-divider {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin: 12px 0;
+      position: relative;
+    }
+
+    .login-divider::before,
+    .login-divider::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      width: 45%;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .login-divider::before {
+      left: 0;
+    }
+
+    .login-divider::after {
+      right: 0;
+    }
+
+    .social-login {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .social-btn {
+      padding: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      border-radius: 8px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .social-btn:hover {
+      border-color: var(--primary);
+      background: var(--bg);
+      color: var(--primary);
+    }
+
+    .login-footer {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .login-footer a {
+      color: var(--primary);
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .login-footer a:hover {
+      color: #60a5fa;
+      text-decoration: underline;
+    }
+
+    .error-msg {
+      padding: 8px 12px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid #ef4444;
+      border-radius: 8px;
+      color: #fca5a5;
+      font-size: 12px;
+      display: none;
+      margin-bottom: 10px;
+    }
+
+    .error-msg.show {
+      display: block;
+    }
+
+    .success-msg {
+      padding: 12px 16px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid #10b981;
+      border-radius: 8px;
+      color: #86efac;
+      font-size: 14px;
+      display: none;
+      margin-bottom: 10px;
+    }
+
+    .success-msg.show {
+      display: block;
+    }
+  </style>
+</head>
+<body style="background: var(--bg);">
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="logo">FoxPro<span>Exchange</span></div>
+        <p>Professional Digital Asset Trading Platform</p>
+      </div>
+
+      <div id="errorMsg" class="error-msg"></div>
+      <div id="successMsg" class="success-msg"></div>
+
+      <form class="login-form" id="loginForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input 
+            type="text" 
+            id="username" 
+            placeholder="Enter username"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input 
+            type="password" 
+            id="password" 
+            placeholder="Enter password"
+            required
+          >
+        </div>
+
+        <div class="remember-forgot">
+          <label>
+            <input type="checkbox" id="rememberMe">
+            Remember me
+          </label>
+        </div>
+
+        <button type="submit" class="login-btn" id="loginBtn">Sign In</button>
+        
+        <div style="text-align: center; margin-top: 20px; font-size: 14px; color: var(--muted);">
+          Don't have an account? 
+          <a href="register.html" style="color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;">Sign Up here</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:3000/api";
+
+    // 显示消息提示
+    function showMessage(message, type = 'error') {
+      const form = document.querySelector('.login-form');
+      let messageEl = document.getElementById('message');
+      if (!messageEl) {
+        messageEl = document.createElement('div');
+        messageEl.id = 'message';
+        messageEl.style.cssText = `
+          padding: 12px 16px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+          text-align: center;
+          font-size: 14px;
+          display: none;
+        `;
+        form.insertBefore(messageEl, form.firstChild);
+      }
+      messageEl.textContent = message;
+      messageEl.style.display = 'block';
+      messageEl.style.backgroundColor = type === 'success' ? '#10b981' : '#ef4444';
+      messageEl.style.color = '#ffffff';
+    }
+
+    // 登录处理
+    document.querySelector('.login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const rememberMe = document.getElementById('rememberMe').checked;
+      const loginBtn = document.getElementById('loginBtn');
+
+      // 验证输入
+      if (!username) {
+        showMessage('Please enter username', 'error');
+        return;
+      }
+
+      if (!password) {
+        showMessage('Please enter password', 'error');
+        return;
+      }
+
+      // 禁用按钮，显示加载状态
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Signing in...';
+
+      try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showMessage(data.message || 'Login failed. Please check username and password', 'error');
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Sign In';
+          return;
+        }
+
+        // 保存 token 和用户信息
+        localStorage.setItem('userToken', data.token);
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userId', data.userId);
+        localStorage.setItem('username', data.username);
+        localStorage.setItem('userEmail', data.email);
+        localStorage.setItem('isAdmin', data.isAdmin || false);
+        localStorage.setItem('email', data.email);
+        localStorage.setItem('userInfo', JSON.stringify(data));
+
+        showMessage('Login successful! Redirecting...', 'success');
+        
+        // 确保数据保存后再重定向到资产页面
+        setTimeout(() => {
+          console.log('[Login] Saved tokens, redirecting to assets.html');
+          // 直接跳转到资产页面
+          window.location.href = 'assets.html';
+        }, 300);
+      } catch (error) {
+        console.error('Login error:', error);
+        showMessage('Network error, please try again', 'error');
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Sign In';
+      }
+    });
+
+    // 页面加载时检查是否已登录
+    document.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+      console.log('[Login Page] DOMContentLoaded - Token exists:', !!token);
+      
+      if (token) {
+        // 有 token，尝试验证
+        console.log('[Login Page] Verifying token...');
+        try {
+          const response = await fetch('http://localhost:3000/api/auth/verify', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            console.log('[Login Page] Token is valid, redirecting to assets.html');
+            // Token 有效，直接跳转到资产页面
+            window.location.href = 'assets.html';
+          } else {
+            console.log('[Login Page] Token verification failed');
+            // Token 无效，不清除，让用户重新登录
+            // 不清除 localStorage，用户可以继续尝试登录
+          }
+        } catch (error) {
+          console.log('[Login Page] Error verifying token:', error);
+          // 网络错误，不清除 token，让用户重试
+        }
+      }
+    });
+  </script>
+</body>
+</html>

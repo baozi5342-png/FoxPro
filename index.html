@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Home - FoxPro Exchange</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .home-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--gap);
+        padding: 40px 16px;
+      }
+
+      .home-hero {
+        text-align: center;
+        margin-bottom: 24px;
+      }
+
+      .home-hero h1 {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: var(--text);
+      }
+
+      .home-hero p {
+        font-size: 16px;
+        color: var(--muted);
+        line-height: 1.6;
+        margin-bottom: 8px;
+      }
+
+      .home-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+        width: 100%;
+        max-width: 600px;
+      }
+
+      .features-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .feature-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px;
+        background: rgba(59, 130, 246, 0.08);
+        border-left: 3px solid var(--primary);
+        border-radius: 6px;
+      }
+
+      .feature-item strong {
+        color: var(--text);
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .feature-item p {
+        font-size: 13px;
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .home-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        width: 100%;
+        flex-wrap: wrap;
+        margin-top: 24px;
+      }
+
+      .home-actions a {
+        flex: 1;
+        min-width: 140px;
+        text-align: center;
+      }
+
+      @media (max-width: 600px) {
+        .home-hero h1 {
+          font-size: 24px;
+        }
+
+        .home-card {
+          padding: 16px;
+        }
+
+        .home-actions {
+          flex-direction: column;
+        }
+
+        .home-actions a {
+          min-width: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="topbar-header">
+          <div class="topbar-left">
+            <div class="logo">FoxPro<span>Exchange</span></div>
+          </div>
+          <div class="topbar-right">
+            <button class="btn ghost" id="logoutBtn" style="display: none;" onclick="logout()">Log Out</button>
+            <a href="#" id="supportLink" title="Customer Support" style="color: var(--primary); font-size: 18px; text-decoration: none; display: none; margin-right: 12px;">
+              💬
+            </a>
+            <span id="userInfo" style="display: none; color: var(--text); margin-right: 15px;"><span id="username"></span></span>
+          </div>
+        </div>
+        <div class="topbar-auth" id="authButtons">
+          <button class="btn ghost" id="loginBtn" onclick="goToLogin()">Sign In</button>
+          <button class="btn primary" id="registerBtn" onclick="window.location.href='register.html'">Sign Up</button>
+        </div>
+        <div class="topbar-nav-wrapper">
+          <nav class="main-nav">
+            <a href="index.html" class="nav-link active">Home</a>
+            <a href="market.html" class="nav-link">Markets</a>
+            <a href="trade.html" class="nav-link">Trade</a>
+            <a href="assets.html" class="nav-link">Assets</a>
+            <a href="account.html" class="nav-link">Account</a>
+          </nav>
+        </div>
+      </header>
+
+      <div class="home-container">
+        <div class="home-hero">
+          <h1>Welcome to FoxPro Exchange</h1>
+          <p>A professional, secure, and reliable cryptocurrency trading platform.</p>
+          <p>Trade digital assets with advanced tools and real-time market data.</p>
+        </div>
+
+        <div class="home-card">
+          <h2 style="font-size: 18px; font-weight: 600; color: var(--primary); margin-bottom: 16px;">Why FoxPro?</h2>
+          
+          <div class="features-list">
+            <div class="feature-item">
+              <div style="flex: 1;">
+                <strong>Professional Trading Tools</strong>
+                <p>Advanced charting, order types, and real-time analytics</p>
+              </div>
+            </div>
+
+            <div class="feature-item">
+              <div style="flex: 1;">
+                <strong>Security First</strong>
+                <p>Multi-layer security with JWT authentication and encrypted data</p>
+              </div>
+            </div>
+
+            <div class="feature-item">
+              <div style="flex: 1;">
+                <strong>Instant Liquidity</strong>
+                <p>Spot trading, futures contracts, and quick execution</p>
+              </div>
+            </div>
+
+            <div class="feature-item">
+              <div style="flex: 1;">
+                <strong>24/7 Support</strong>
+                <p>Always available for our traders worldwide</p>
+              </div>
+            </div>
+
+            <div class="feature-item">
+              <div style="flex: 1;">
+                <strong>Low Fees</strong>
+                <p>Competitive commission rates for all trading volumes</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="home-actions">
+            <a class="btn primary" href="market.html">View Markets</a>
+            <a class="btn primary" href="trade.html">Start Trading</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+      function updateAuthDisplay() {
+        const authButtons = document.getElementById('authButtons');
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        
+        if (isLoggedIn()) {
+          if (authButtons) authButtons.style.display = 'none';
+          if (loginBtn) loginBtn.style.display = 'none';
+          if (registerBtn) registerBtn.style.display = 'none';
+          if (logoutBtn) logoutBtn.style.display = 'none';
+        } else {
+          if (authButtons) authButtons.style.display = 'flex';
+          if (loginBtn) loginBtn.style.display = 'block';
+          if (registerBtn) registerBtn.style.display = 'block';
+          if (logoutBtn) logoutBtn.style.display = 'none';
+        }
+      }
+
+      function goToLogin() {
+        // Navigate to login page
+        window.location.href = 'login.html';
+      }
+
+      function goToTrade() {
+        if (!isLoggedIn()) { 
+          window.location.href = 'login.html'; 
+          return; 
+        }
+        window.location.href = 'trade.html';
+      }
+
+      async function loadSupportLink() {
+        try {
+          const supportLink = document.getElementById('supportLink');
+          if (supportLink) {
+            supportLink.href = 'customer-support.html';
+            supportLink.style.display = 'inline-block';
+            supportLink.title = 'Customer Support';
+          }
+        } catch (error) {
+          console.error('Error loading support link:', error);
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        updateNavbar();
+        updateAuthDisplay();
+        loadSupportLink();
+        document.querySelectorAll('.main-nav .nav-link').forEach(item => {
+          const href = item.getAttribute('href');
+          if (href === 'index.html') {
+            item.classList.add('active');
+          } else {
+            item.classList.remove('active');
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

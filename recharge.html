@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deposit - FoxPro Exchange</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .form-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .form-card h3 {
+        margin-bottom: 16px;
+        font-weight: 600;
+      }
+
+      .form-group {
+        margin-bottom: 16px;
+      }
+
+      .form-group label {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+
+      .form-group input,
+      .form-group select {
+        width: 100%;
+        padding: 10px 12px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      .form-group input:focus,
+      .form-group select:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .qr-container {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        margin: 16px 0;
+      }
+
+      .qr-code {
+        width: 200px;
+        height: 200px;
+        background: var(--panel-2);
+        margin: 0 auto 12px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .address-box {
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 12px;
+        margin: 12px 0;
+        word-break: break-all;
+        font-family: monospace;
+        font-size: 12px;
+        color: var(--text);
+      }
+
+      .copy-btn {
+        padding: 8px 12px;
+        background: var(--primary);
+        border: 1px solid var(--primary);
+        border-radius: 4px;
+        color: white;
+        font-size: 12px;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 8px;
+      }
+
+      .copy-btn:hover {
+        opacity: 0.8;
+      }
+
+      .deposit-info {
+        background: var(--panel-2);
+        border-left: 3px solid var(--primary);
+        border-radius: 4px;
+        padding: 12px;
+        margin: 12px 0;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .deposit-info strong {
+        color: var(--primary);
+      }
+
+      .deposit-list {
+        margin-top: 20px;
+      }
+
+      .deposit-item {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .deposit-item-left {
+        flex: 1;
+      }
+
+      .deposit-item-title {
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+
+      .deposit-item-time {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .deposit-item-amount {
+        text-align: right;
+      }
+
+      .deposit-item-value {
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+
+      .deposit-status {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: var(--warning);
+        color: white;
+      }
+
+      .deposit-status.success {
+        background: var(--success);
+      }
+
+      .deposit-status.confirmed {
+        background: var(--primary);
+      }
+
+      .tabs {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 12px;
+      }
+
+      .tab {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        padding-bottom: 8px;
+        border-bottom: 2px solid transparent;
+      }
+
+      .tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+      }
+
+      @media (max-width: 768px) {
+        .form-row {
+          grid-template-columns: 1fr;
+        }
+
+        .deposit-item {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .deposit-item-amount {
+          text-align: left;
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="topbar-header">
+          <div class="topbar-left">
+            <div class="logo">FoxPro<span>Exchange</span></div>
+          </div>
+          <div class="topbar-right">
+            <button class="btn ghost" id="logoutBtn" style="display: none;" onclick="logout()">Log Out</button>
+            <a href="#" id="supportLink" title="Customer Support" style="color: var(--primary); font-size: 18px; text-decoration: none; display: none; margin-right: 12px;">
+              💬
+            </a>
+            <span id="userInfo" style="display: none; color: var(--text); margin-right: 15px;"><span id="username"></span></span>
+          </div>
+        </div>
+        <div class="topbar-nav-wrapper">
+          <nav class="main-nav">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="market.html" class="nav-link">Markets</a>
+            <a href="trade.html" class="nav-link">Trade</a>
+            <a href="assets.html" class="nav-link">Assets</a>
+            <a href="account.html" class="nav-link">Account</a>
+          </nav>
+        </div>
+      </header>
+
+      <!-- Login Prompt -->
+      <div id="loginPrompt" style="text-align: center; padding: 40px 20px; background: rgba(59, 130, 246, 0.08); border-radius: 12px; margin-bottom: 20px;">
+        <h2 style="font-size: 20px; margin-bottom: 12px;">Sign in to deposit</h2>
+        <p style="color: var(--muted); margin-bottom: 16px; font-size: 14px;">Add funds to your account to start trading</p>
+        <div style="display: flex; gap: 12px;">
+          <button class="btn" style="flex: 1; background: var(--primary); color: white;" onclick="window.location.href='login.html'">Sign In</button>
+          <button class="btn" style="flex: 1; background: none; border: 1px solid var(--border); color: var(--text);" onclick="window.location.href='register.html'">Create Account</button>
+        </div>
+      </div>
+
+      <div id="content-area">
+      <h2 style="margin-bottom: 20px;">Deposit Cryptocurrency</h2>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('deposit')">Deposit</button>
+        <button class="tab" onclick="switchTab('history')">Deposit History</button>
+      </div>
+
+      <!-- Deposit Form -->
+      <div id="deposit-tab" style="display: block;">
+        <div class="form-card">
+          <h3>Select Cryptocurrency</h3>
+          <div class="form-group">
+            <label>Cryptocurrency</label>
+            <select id="coinSelect" onchange="updateCoinInfo()">
+              <option value="BTC">Bitcoin (BTC)</option>
+              <option value="ETH">Ethereum (ETH)</option>
+              <option value="USDT">Tether (USDT)</option>
+              <option value="SOL">Solana (SOL)</option>
+              <option value="ADA">Cardano (ADA)</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Network</label>
+              <select id="networkSelect">
+                <option value="mainnet">Mainnet</option>
+                <option value="bsc">BSC (BEP-20)</option>
+                <option value="polygon">Polygon</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Minimum Deposit</label>
+              <input type="text" id="minDeposit" disabled value="0.001 BTC" />
+            </div>
+          </div>
+        </div>
+
+        <!-- QR Code and Address and Address -->
+        <div class="form-card">
+          <h3>Deposit Address</h3>
+          <div class="qr-container">
+            <div class="qr-code">
+              [QR Code]<br/>Scan to deposit
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Your Deposit Address</label>
+            <div class="address-box" id="depositAddress">
+              1A1z7agoat2Rt7a3SDVgZzymqjcjJrHeP
+            </div>
+            <button class="copy-btn" onclick="copyAddress()">📋 Copy Address</button>
+          </div>
+        </div>
+
+        <!-- Important Notes -->
+        <div class="form-card">
+          <h3>⚠️ Important Notes</h3>
+          <div class="deposit-info">
+            <strong>Choose the correct network:</strong> Using the wrong network may result in permanent loss of funds. Make sure to select the same network where you're sending from.
+          </div>
+          <div class="deposit-info">
+            <strong>Minimum deposit amount:</strong> <span id="minAmount">0.001 BTC</span>
+          </div>
+          <div class="deposit-info">
+            <strong>Confirmation time:</strong> Usually arrives within 10-30 minutes after blockchain confirmation.
+          </div>
+          <div class="deposit-info">
+            <strong>Questions?</strong> Contact our <a href="service.html" style="color: var(--primary); text-decoration: underline;">Customer Service</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deposit History -->
+      <div id="history-tab" style="display: none;">
+        <div class="form-card">
+          <h3>Deposit Records</h3>
+          <div class="deposit-list">
+            <div class="deposit-item">
+              <div class="deposit-item-left">
+                <div class="deposit-item-title">Bitcoin (BTC) - Mainnet</div>
+                <div class="deposit-item-time">2025-12-28 14:32:15</div>
+              </div>
+              <div class="deposit-item-amount">
+                <div class="deposit-item-value">+0.05 BTC</div>
+                <span class="deposit-status success">CONFIRMED</span>
+              </div>
+            </div>
+
+            <div class="deposit-item">
+              <div class="deposit-item-left">
+                <div class="deposit-item-title">Ethereum (ETH) - Mainnet</div>
+                <div class="deposit-item-time">2025-12-27 09:15:42</div>
+              </div>
+              <div class="deposit-item-amount">
+                <div class="deposit-item-value">+1.0 ETH</div>
+                <span class="deposit-status confirmed">CONFIRMING</span>
+              </div>
+            </div>
+
+            <div class="deposit-item">
+              <div class="deposit-item-left">
+                <div class="deposit-item-title">Tether (USDT) - BSC</div>
+                <div class="deposit-item-time">2025-12-26 16:48:20</div>
+              </div>
+              <div class="deposit-item-amount">
+                <div class="deposit-item-value">+500 USDT</div>
+                <span class="deposit-status success">CONFIRMED</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+      function switchTab(tab) {
+        document.querySelectorAll('[id$="-tab"]').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+        
+        if (tab === 'deposit') {
+          document.getElementById('deposit-tab').style.display = 'block';
+          document.querySelectorAll('.tab')[0].classList.add('active');
+        } else {
+          document.getElementById('history-tab').style.display = 'block';
+          document.querySelectorAll('.tab')[1].classList.add('active');
+        }
+      }
+
+      function updateCoinInfo() {
+        const coin = document.getElementById('coinSelect').value;
+        const minAmounts = {
+          'BTC': '0.001 BTC',
+          'ETH': '0.01 ETH',
+          'USDT': '10 USDT',
+          'SOL': '0.1 SOL',
+          'ADA': '1 ADA'
+        };
+        document.getElementById('minDeposit').value = minAmounts[coin];
+        document.getElementById('minAmount').textContent = minAmounts[coin];
+      }
+
+      function copyAddress() {
+        const address = document.getElementById('depositAddress').textContent;
+        navigator.clipboard.writeText(address).then(() => {
+          alert('Address copied to clipboard!');
+        });
+      }
+
+      function updateAuthDisplay() {
+        const authButtons = document.getElementById('authButtons');
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        
+        if (isLoggedIn()) {
+          if (authButtons) authButtons.style.display = 'none';
+          if (loginBtn) loginBtn.style.display = 'none';
+          if (registerBtn) registerBtn.style.display = 'none';
+          if (logoutBtn) logoutBtn.style.display = 'block';
+        } else {
+          if (authButtons) authButtons.style.display = 'flex';
+          if (loginBtn) loginBtn.style.display = 'block';
+          if (registerBtn) registerBtn.style.display = 'block';
+          if (logoutBtn) logoutBtn.style.display = 'none';
+        }
+      }
+
+      async function loadSupportLink() {
+        try {
+          const supportLink = document.getElementById('supportLink');
+          if (supportLink) {
+            supportLink.href = 'customer-support.html';
+            supportLink.style.display = 'inline-block';
+            supportLink.title = 'Customer Support';
+          }
+        } catch (error) {
+          console.error('Error loading support link:', error);
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        updateNavbar();
+        loadSupportLink();
+        updateAuthDisplay();
+        const user = getCurrentUser();
+        const loginPrompt = document.getElementById('loginPrompt');
+        const contentArea = document.getElementById('content-area');
+        
+        if (!user) {
+          if (loginPrompt) loginPrompt.style.display = 'block';
+          if (contentArea) contentArea.style.display = 'none';
+          return;
+        }
+        if (loginPrompt) loginPrompt.style.display = 'none';
+        if (contentArea) contentArea.style.display = 'block';
+        updateCoinInfo();
+      });
+    </script>
+  </body>
+</html>

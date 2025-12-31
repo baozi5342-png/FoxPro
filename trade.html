@@ -1,0 +1,1728 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trade - FoxPro Exchange</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://unpkg.com/lightweight-charts@4/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+      .app {
+        max-width: var(--container-max);
+        margin: 0 auto;
+        padding: 0 16px 48px;
+      }
+
+      .trade-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      /* Trade tabs at page level */
+      .trade-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 12px;
+      }
+
+      .trade-tab {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        padding-bottom: 8px;
+        border-bottom: 2px solid transparent;
+      }
+
+      .trade-tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+      }
+
+      /* Hide inactive trade sections */
+      .trade-section {
+        display: none;
+      }
+
+      .trade-section.active {
+        display: block;
+      }
+
+      .trade-card h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 16px;
+      }
+
+      .form-group {
+        margin-bottom: 12px;
+      }
+
+      .form-group label {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+
+      .form-group input,
+      .form-group select {
+        width: 100%;
+        padding: 10px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      .form-group input:focus,
+      .form-group select:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
+
+      .contract-tabs {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 12px;
+      }
+
+      .contract-tab {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        padding-bottom: 8px;
+        border-bottom: 2px solid transparent;
+      }
+
+      .contract-tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+      }
+
+      .btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .btn.primary {
+        background: var(--primary);
+        color: white;
+      }
+
+      .btn.success {
+        background: var(--success);
+        color: white;
+      }
+
+      .btn.danger {
+        background: var(--danger);
+        color: white;
+      }
+
+      .pair-selector {
+        margin-bottom: 16px;
+      }
+
+      .pair-selector label {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .pair-selector select {
+        width: 100%;
+        padding: 10px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      /* 蓝色杠杆拉条样式 */
+      input[type="range"] {
+        width: 100%;
+        height: 6px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: linear-gradient(to right, #3b82f6 0%, #3b82f6 50%, #1e293b 50%, #1e293b 100%);
+        border-radius: 999px;
+        outline: none;
+        cursor: pointer;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #3b82f6;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        border: 2px solid #1e293b;
+      }
+
+      input[type="range"]::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #3b82f6;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        border: 2px solid #1e293b;
+      }
+
+      input[type="range"]::-moz-range-track {
+        background: transparent;
+        border: none;
+      }
+
+      /* 秒数选择按钮样式 */
+      .period-btn {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+
+      .period-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.1);
+        transition: left 0.3s ease;
+      }
+
+      .period-btn:hover:not(.active)::before {
+        left: 100%;
+      }
+
+      .period-btn.active {
+        background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+        border-color: #1e40af !important;
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+      }
+
+      .period-btn.active:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 24px rgba(59, 130, 246, 0.6);
+      }
+
+      .period-btn:not(.active):hover {
+        background: var(--panel-2) !important;
+        border-color: #3b82f6 !important;
+        transform: translateY(-1px);
+      }
+
+      /* 金额选择按钮样式 */
+      .amount-btn {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        background: var(--panel-2) !important;
+        color: var(--muted) !important;
+        border: 1px solid var(--border) !important;
+        font-size: 13px !important;
+        font-weight: 500;
+      }
+
+      .amount-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: rgba(59, 130, 246, 0.1);
+        transition: left 0.3s ease;
+        z-index: 1;
+      }
+
+      .amount-btn:hover::before {
+        left: 100%;
+      }
+
+      .amount-btn:hover {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)) !important;
+        border-color: #3b82f6 !important;
+        color: #3b82f6 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+      }
+
+      .amount-btn:active {
+        transform: translateY(0);
+        box-shadow: inset 0 2px 4px rgba(59, 130, 246, 0.2);
+      }
+
+      .amount-btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.3;
+        pointer-events: none;
+      }
+
+      /* 秒合约倒计时模态框 */
+      .countdown-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .countdown-modal.active {
+        display: flex;
+      }
+
+      .countdown-modal-content {
+        background: var(--panel);
+        border-radius: 16px;
+        padding: 32px;
+        text-align: center;
+        max-width: 400px;
+        width: 90%;
+        border: 1px solid var(--border);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      .countdown-header {
+        margin-bottom: 24px;
+      }
+
+      .countdown-header h2 {
+        font-size: 18px;
+        color: var(--text);
+        margin-bottom: 8px;
+      }
+
+      .countdown-header p {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .countdown-timer {
+        font-size: 64px;
+        font-weight: 700;
+        color: var(--primary);
+        margin: 24px 0;
+        font-family: 'Courier New', monospace;
+      }
+
+      .countdown-info {
+        background: var(--panel-2);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 24px;
+        font-size: 13px;
+      }
+
+      .countdown-info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        color: var(--muted);
+      }
+
+      .countdown-info-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .countdown-info-row .value {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .countdown-result {
+        display: none;
+        animation: slideIn 0.3s ease-out;
+      }
+
+      .countdown-result.show {
+        display: block;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .result-badge {
+        font-size: 48px;
+        margin-bottom: 16px;
+      }
+
+      .result-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: var(--text);
+      }
+
+      .result-profit {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        color: var(--success);
+      }
+
+      .result-loss {
+        color: var(--danger);
+      }
+
+      .result-details {
+        background: var(--panel-2);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 16px;
+        font-size: 12px;
+        text-align: left;
+      }
+
+      .result-detail-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        color: var(--muted);
+      }
+
+      .result-detail-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .result-detail-row .value {
+        color: var(--text);
+      }
+
+      .countdown-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .countdown-actions .btn {
+        width: 100%;
+        padding: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="topbar-header">
+          <div class="topbar-left">
+            <div class="logo">FoxPro<span>Exchange</span></div>
+          </div>
+          <div class="topbar-right">
+            <button class="btn ghost" id="logoutBtn" style="display: none;" onclick="logout()">Log Out</button>
+            <a href="#" id="supportLink" title="Customer Support" style="color: var(--primary); font-size: 18px; text-decoration: none; display: none; margin-right: 12px;">
+              💬
+            </a>
+            <span id="userInfo" style="display: none; color: var(--text); margin-right: 15px;"><span id="username"></span></span>
+          </div>
+        </div>
+        <div class="topbar-nav-wrapper">
+          <nav class="main-nav">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="market.html" class="nav-link">Markets</a>
+            <a href="trade.html" class="nav-link active">Trade</a>
+            <a href="assets.html" class="nav-link">Assets</a>
+            <a href="account.html" class="nav-link">Account</a>
+          </nav>
+        </div>
+      </header>
+
+      <!-- Login Prompt -->
+      <div id="loginPrompt" style="text-align: center; padding: 40px 20px; background: rgba(59, 130, 246, 0.08); border-radius: 12px; margin-bottom: 20px;">
+        <h2 style="font-size: 20px; margin-bottom: 12px;">Sign in to start trading</h2>
+        <p style="color: var(--muted); margin-bottom: 16px; font-size: 14px;">Access trading tools, manage orders, and execute trades securely</p>
+        <div style="display: flex; gap: 12px;">
+          <button class="btn" style="flex: 1; background: var(--primary); color: white; padding: 12px 32px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;" onclick="window.location.href='login.html'">Sign In</button>
+          <button class="btn" style="flex: 1; background: none; border: 2px solid var(--primary); color: var(--primary); padding: 10px 30px; border-radius: 8px; cursor: pointer; font-weight: 600;" onclick="window.location.href='register.html'">Create Account</button>
+        </div>
+      </div>
+
+      <div class="trade-container">
+        <!-- Trade Mode Tabs -->
+        <div class="trade-tabs">
+          <button class="trade-tab active" data-mode="quick" onclick="switchTradeMode('quick', this)">Quick Contract</button>
+          <button class="trade-tab" data-mode="orders" onclick="switchTradeMode('orders', this)">My Orders</button>
+          <button class="trade-tab" data-mode="spot" onclick="switchTradeMode('spot', this)">Spot Trading</button>
+          <button class="trade-tab" data-mode="perpetual" onclick="switchTradeMode('perpetual', this)">Perpetual Futures</button>
+        </div>
+
+        <!-- Quick Contract Section -->
+        <div class="trade-section active" id="quick-section">
+          <div class="trade-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 style="margin: 0;">Quick Contract</h3>
+              <button class="btn ghost" id="closeQuickBtn" onclick="goBack()" style="color: var(--muted); font-size: 18px; padding: 4px 8px;">✕</button>
+            </div>
+
+            <div class="form-group">
+              <label>Select Pair</label>
+              <select id="quickSymbol" onchange="updateQuickInfo()">
+                <option value="BTC">BTC/USDT</option>
+                <option value="ETH">ETH/USDT</option>
+                <option value="SOL">SOL/USDT</option>
+                <option value="BNB">BNB/USDT</option>
+                <option value="XRP">XRP/USDT</option>
+              </select>
+            </div>
+
+            <!-- K线图 -->
+            <div style="margin-bottom: 16px; border-radius: 6px; background: var(--panel-2); padding: 12px; overflow: hidden;">
+              <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 600;">
+                Real-time Chart (1m)
+                <span style="float: right; color: var(--text);">
+                  Price: <span id="quickPrice" data-symbol="BTC">$94500</span>
+                </span>
+              </div>
+              <div id="quickChart" style="width: 100%; height: 250px; border-radius: 4px; background: var(--panel);"></div>
+            </div>
+
+            <!-- Select Period -->
+            <div class="form-group">
+              <label>Select Expiry Time (seconds)</label>
+              <div id="periodButtons" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                <!-- Dynamically generated -->
+              </div>
+            </div>
+
+            <!-- Purchase Volume -->
+            <div class="form-group">
+              <label>Purchase Volume</label>
+              <input type="number" id="quickAmount" value="100" min="10" max="100000" placeholder="Least 90 USDT" style="width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);" />
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px;">
+                <button class="amount-btn" onclick="setQuickAmount(500)">500</button>
+                <button class="amount-btn" onclick="setQuickAmount(1000)">1000</button>
+                <button class="amount-btn" onclick="setQuickAmount(2000)">2000</button>
+                <button class="amount-btn" onclick="setQuickAmount(5000)">5000</button>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px;">
+                <button class="amount-btn" onclick="setQuickAmount(10000)">10000</button>
+                <button class="amount-btn" onclick="setQuickAmount(20000)">20000</button>
+                <button class="amount-btn" onclick="setQuickAmount('max')">All</button>
+                <button class="amount-btn" style="cursor: default;" disabled></button>
+              </div>
+            </div>
+
+            <!-- Available Balance -->
+            <div style="margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 6px;">
+              <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                <span style="color: var(--muted);">Available balance:</span>
+                <span style="color: var(--text);" id="availBalance">7538450 USDT</span>
+              </div>
+            </div>
+
+            <!-- Profit Info -->
+            <div style="margin-bottom: 16px; padding: 12px; background: var(--panel-2); border-radius: 6px;">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px;">
+                <span style="color: var(--muted);">Potential Profit (long):</span>
+                <span style="color: var(--success);" id="profitLong">+0 USDT</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                <span style="color: var(--muted);">Potential Profit (short):</span>
+                <span style="color: var(--success);" id="profitShort">+0 USDT</span>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button class="btn success" onclick="placeQuickOrder('long')" style="font-weight: 600; padding: 12px;">↑ Buy Long</button>
+              <button class="btn danger" onclick="placeQuickOrder('short')" style="font-weight: 600; padding: 12px;">↓ Buy Short</button>
+            </div>
+
+            <!-- Countdown -->
+            <div style="margin-top: 16px; padding: 12px; background: var(--panel-2); border-radius: 6px;">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--muted);">
+                <span>Time Left:</span>
+                <span id="countdown">30s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Spot Trading Section -->
+        <div class="trade-section" id="spot-section">
+          <div class="trade-card">
+          <h3>Spot Trading</h3>
+          <div class="contract-tabs">
+            <button class="contract-tab active" onclick="switchTradeType('spot', this)">Buy</button>
+            <button class="contract-tab" onclick="switchTradeType('spot', this)">Sell</button>
+          </div>
+
+          <div class="form-group">
+            <label>Select Pair</label>
+            <select id="spotSymbol" style="width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);" onchange="updateSpotChart()">
+              <option value="BTC">BTC/USDT</option>
+              <option value="ETH">ETH/USDT</option>
+              <option value="SOL">SOL/USDT</option>
+              <option value="BNB">BNB/USDT</option>
+              <option value="XRP">XRP/USDT</option>
+              <option value="ADA">ADA/USDT</option>
+              <option value="DOGE">DOGE/USDT</option>
+              <option value="LTC">LTC/USDT</option>
+            </select>
+          </div>
+
+          <!-- K线图 -->
+          <div style="margin-bottom: 16px; border-radius: 6px; background: var(--panel-2); padding: 12px; overflow: hidden;">
+            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 600;">
+              Real-time Chart (1m)
+              <span style="float: right; color: var(--text);">
+                Price: <span id="spotPrice" data-symbol="BTC">$94500</span>
+              </span>
+            </div>
+            <div id="spotChart" style="width: 100%; height: 250px; border-radius: 4px; background: var(--panel);"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Price (USDT)</label>
+            <input type="number" step="0.01" placeholder="Enter limit price" style="width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);" />
+          </div>
+
+          <div class="form-group">
+            <label>Amount</label>
+            <input type="number" step="0.001" placeholder="Enter order amount" style="width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);" />
+          </div>
+
+          <div class="form-group">
+            <label>Order Type</label>
+            <select style="width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+              <option>Limit Order</option>
+              <option>Market Order</option>
+            </select>
+          </div>
+
+          <button class="btn primary" style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" onclick="placeOrder('spot')">Place Order</button>
+
+          <div style="margin-top: 16px; padding: 12px; background: var(--panel-2); border-radius: 6px; font-size: 12px;">
+            <div style="display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 6px;">
+              <span>Available Balance:</span>
+              <span id="spotBalance">$0.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; color: var(--text); margin-bottom: 6px;">
+              <span>Total Cost:</span>
+              <span id="spotTotalCost">0.00 USDT</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; color: var(--muted);">
+              <span>Fee (0.1%):</span>
+              <span id="spotFee">0.00 USDT</span>
+            </div>
+          </div>
+        </div>
+        </div>
+
+        <!-- Perpetual Futures Section -->
+        <div class="trade-section" id="perpetual-section">
+          <div class="trade-card">
+          <h3>Perpetual Futures Trading</h3>
+
+          <div class="form-group">
+            <label>Select Pair</label>
+            <select id="perpetualSymbol" style="width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);" onchange="updatePerpetualChart()">
+              <option value="BTC">BTC/USDT</option>
+              <option value="ETH">ETH/USDT</option>
+              <option value="SOL">SOL/USDT</option>
+              <option value="BNB">BNB/USDT</option>
+              <option value="XRP">XRP/USDT</option>
+              <option value="ADA">ADA/USDT</option>
+              <option value="DOGE">DOGE/USDT</option>
+              <option value="LTC">LTC/USDT</option>
+            </select>
+          </div>
+
+          <!-- K线图 -->
+          <div style="margin-bottom: 16px; border-radius: 6px; background: var(--panel-2); padding: 12px; overflow: hidden;">
+            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 600;">
+              Real-time Chart (1m)
+              <span style="float: right; color: var(--text);">
+                Price: <span id="perpetualPrice" data-symbol="BTC">$94500</span>
+              </span>
+            </div>
+            <div id="perpetualChart" style="width: 100%; height: 250px; border-radius: 4px; background: var(--panel);"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Leverage: <span id="leverage-value" style="color: var(--primary);">1x</span></label>
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 8px;">
+              <button class="leverage-btn" style="padding: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text);" onclick="setLeverage(1)">1x</button>
+              <button class="leverage-btn" style="padding: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text);" onclick="setLeverage(5)">5x</button>
+              <button class="leverage-btn" style="padding: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text);" onclick="setLeverage(10)">10x</button>
+              <button class="leverage-btn" style="padding: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text);" onclick="setLeverage(15)">15x</button>
+              <button class="leverage-btn" style="padding: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text);" onclick="setLeverage(20)">20x</button>
+            </div>
+            <input type="range" min="1" max="20" value="1" onchange="updateLeverage(this.value)" style="width: 100%; cursor: pointer; margin-top: 8px;" />
+          </div>
+
+          <div class="form-group">
+            <label>Position Size (USDT)</label>
+            <input type="number" step="10" placeholder="Enter position size" style="width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);" />
+          </div>
+
+          <div class="form-group">
+            <label>Entry Price</label>
+            <input type="number" step="0.01" placeholder="Entry price" style="width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);" />
+          </div>
+
+          <div class="form-group">
+            <label>Take Profit</label>
+            <input type="number" step="0.01" placeholder="Take profit price" style="width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);" />
+          </div>
+
+          <div class="form-group">
+            <label>Stop Loss</label>
+            <input type="number" step="0.01" placeholder="Stop loss price" style="width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);" />
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+            <button class="btn success" style="padding: 12px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" onclick="placeOrder('long')">Open Long ↑</button>
+            <button class="btn danger" style="padding: 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" onclick="placeOrder('short')">Open Short ↓</button>
+          </div>
+
+          <div style="padding: 12px; background: var(--panel-2); border-radius: 6px; font-size: 12px;">
+            <div style="display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 6px;">
+              <span>Available Margin:</span>
+              <span id="perpetualMargin">$0.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 6px;">
+              <span>Required Margin:</span>
+              <span id="requiredMargin">0.00 USDT</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; color: var(--text);">
+              <span>Est. Liquidation Price:</span>
+              <span id="liquidationPrice">-- USDT</span>
+            </div>
+          </div>
+        </div>
+        </div>          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <button class="btn success" style="flex: 1; background: #10b981; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-right: 6px;" onclick="placeOrder('long')">Open Long ↑</button>
+            <button class="btn danger" style="flex: 1; background: #ef4444; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600;" onclick="placeOrder('short')">Open Short ↓</button>
+          </div>
+
+          <div style="margin-top: 16px; padding: 12px; background: var(--panel-2); border-radius: 6px; font-size: 12px;">
+            <div style="display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 6px;">
+              <span>Available Margin:</span>
+              <span id="perpetualMargin">$0.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 6px;">
+              <span>Required Margin:</span>
+              <span id="requiredMargin">0.00 USDT</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; color: var(--text);">
+              <span>Est. Liquidation Price:</span>
+              <span id="liquidationPrice">-- USDT</span>
+            </div>
+          </div>
+        </div>
+        </div>
+
+        <!-- Pair Info -->
+        <div class="trade-card pair-info">
+          <h3>Pair Info</h3>
+          <div style="font-size: 12px;">
+            <div style="display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 12px;">
+              <span>Current Price:</span>
+              <span style="color: var(--text);">$94,500</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 12px;">
+              <span>24H Change:</span>
+              <span style="color: var(--success);">+5.2%</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 12px;">
+              <span>24H High:</span>
+              <span style="color: var(--text);">$95,200</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; color: var(--muted);">
+              <span>24H Low:</span>
+              <span style="color: var(--text);">$93,800</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Order History -->
+        <div class="trade-card order-history">
+          <h3>Order History</h3>
+          <div style="font-size: 12px; color: var(--muted);">No active orders</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 秒合约倒计时模态框 -->
+    <div id="countdownModal" class="countdown-modal">
+      <div class="countdown-modal-content">
+        <!-- 倒计时界面 -->
+        <div id="countdownPhase" style="display: block;">
+          <div class="countdown-header">
+            <h2 id="orderDirection">Buy Long</h2>
+            <p id="orderSymbol">BTC/USDT</p>
+          </div>
+
+          <div class="countdown-timer" id="countdownDisplay">30</div>
+
+          <div class="countdown-info">
+            <div class="countdown-info-row">
+              <span>Amount:</span>
+              <span class="value" id="modalAmount">100 USDT</span>
+            </div>
+            <div class="countdown-info-row">
+              <span>Entry Price:</span>
+              <span class="value" id="modalEntryPrice">$50,000</span>
+            </div>
+            <div class="countdown-info-row">
+              <span>Potential Profit:</span>
+              <span class="value" id="modalProfit">+40 USDT</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 结果界面 -->
+        <div id="resultPhase" class="countdown-result">
+          <div class="result-badge" id="resultBadge">🎉</div>
+          <div class="result-title" id="resultTitle">Trade Win!</div>
+          <div class="result-profit" id="resultAmount">+40 USDT</div>
+
+          <div class="result-details">
+            <div class="result-detail-row">
+              <span>Direction:</span>
+              <span class="value" id="resultDirection">Buy Long</span>
+            </div>
+            <div class="result-detail-row">
+              <span>Entry Price:</span>
+              <span class="value" id="resultEntryPrice">$50,000</span>
+            </div>
+            <div class="result-detail-row">
+              <span>Exit Price:</span>
+              <span class="value" id="resultExitPrice">$51,000</span>
+            </div>
+            <div class="result-detail-row">
+              <span>Profit Rate:</span>
+              <span class="value" id="resultRate">+40%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="countdown-actions">
+          <button class="btn primary" id="closeResultBtn" onclick="closeCountdownModal()">Continue Trading</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- My Orders Section for Quick Contract -->
+    <div class="trade-section" id="orders-section">
+      <div class="trade-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="margin: 0;">My Orders</h3>
+          <button class="btn ghost" onclick="refreshMyOrders()" style="color: var(--muted); font-size: 14px; padding: 4px 8px;">🔄 Refresh</button>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <div style="display: flex; gap: 8px;">
+            <button class="contract-tab active" onclick="filterOrders('all')" style="flex: 1; padding: 8px 12px; font-size: 13px;">All Orders</button>
+            <button class="contract-tab" onclick="filterOrders('active')" style="flex: 1; padding: 8px 12px; font-size: 13px;">Open</button>
+            <button class="contract-tab" onclick="filterOrders('win')" style="flex: 1; padding: 8px 12px; font-size: 13px;">Wins</button>
+            <button class="contract-tab" onclick="filterOrders('loss')" style="flex: 1; padding: 8px 12px; font-size: 13px;">Losses</button>
+          </div>
+        </div>
+
+        <div id="myOrdersList" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="text-align: center; padding: 32px; color: var(--muted); font-size: 14px;">
+            No orders yet
+          </div>
+        </div>
+
+        <div style="margin-top: 16px; padding: 12px; background: var(--panel-2); border-radius: 6px; font-size: 12px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div>
+              <div style="color: var(--muted); margin-bottom: 4px;">Total Orders</div>
+              <div style="font-weight: 700; font-size: 16px;" id="totalOrders">0</div>
+            </div>
+            <div>
+              <div style="color: var(--muted); margin-bottom: 4px;">Win Rate</div>
+              <div style="font-weight: 700; font-size: 16px; color: var(--success);" id="winRate">0%</div>
+            </div>
+            <div>
+              <div style="color: var(--muted); margin-bottom: 4px;">Total Profit</div>
+              <div style="font-weight: 700; font-size: 16px; color: var(--success);" id="totalProfit">+0 USDT</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+      let quickContractConfig = [];
+      let selectedSeconds = 30;
+      let countdownInterval = null;
+
+      // 加载秒合约配置
+      async function loadQuickContractConfig() {
+        try {
+          const response = await fetch('http://localhost:3000/api/quick-contract/config');
+          const result = await response.json();
+          
+          if (result.data && Array.isArray(result.data)) {
+            quickContractConfig = result.data;
+            renderPeriodButtons();
+          } else {
+            throw new Error('Invalid config format');
+          }
+        } catch (error) {
+          console.error('Error loading config:', error);
+          // Use default configuration
+          quickContractConfig = [
+            { seconds: 30, profitRate: 40 },
+            { seconds: 60, profitRate: 50 },
+            { seconds: 120, profitRate: 60 },
+            { seconds: 180, profitRate: 80 },
+            { seconds: 300, profitRate: 100 }
+          ];
+          renderPeriodButtons();
+        }
+      }
+
+      // Render period selection buttons
+      function renderPeriodButtons() {
+        const container = document.getElementById('periodButtons');
+        container.innerHTML = quickContractConfig.map(config => `
+          <button 
+            class="period-btn ${config.seconds === selectedSeconds ? 'active' : ''}"
+            onclick="selectPeriod(${config.seconds})"
+            style="padding: 12px; border-radius: 8px; cursor: pointer; position: relative; z-index: 1;"
+          >
+            <div style="font-size: 14px; font-weight: 600;">${config.seconds}s</div>
+            <div style="font-size: 11px; color: var(--muted);">+${config.profitRate}%</div>
+            ${config.seconds === selectedSeconds ? '<div style="position: absolute; top: 4px; right: 4px; color: white; font-size: 16px; font-weight: 700;">✓</div>' : ''}
+          </button>
+        `).join('');
+      }
+
+      function selectPeriod(seconds) {
+        selectedSeconds = seconds;
+        renderPeriodButtons();
+        updateQuickInfo();
+      }
+
+      function setQuickAmount(amount) {
+        const input = document.getElementById('quickAmount');
+        if (amount === 'max') {
+          input.value = 100000;
+        } else {
+          input.value = amount;
+        }
+        updateQuickInfo();
+      }
+
+      function updateQuickInfo() {
+        const symbol = document.getElementById('quickSymbol').value;
+        const amount = parseFloat(document.getElementById('quickAmount').value) || 0;
+        
+        const config = quickContractConfig.find(c => c.seconds === selectedSeconds);
+        if (!config) return;
+
+        // Calculate profit based on percentage
+        const profit = amount * (config.profitRate / 100);
+        
+        document.getElementById('profitLong').textContent = `+${profit.toFixed(2)} USDT`;
+        document.getElementById('profitShort').textContent = `+${profit.toFixed(2)} USDT`;
+      }
+
+      async function placeQuickOrder(direction) {
+        if (!isLoggedIn()) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const symbol = document.getElementById('quickSymbol').value;
+        const amount = parseFloat(document.getElementById('quickAmount').value);
+
+        if (!amount || amount <= 0) {
+          alert('Please enter a valid amount');
+          return;
+        }
+
+        // 禁用按钮防止重复点击
+        const buyBtn = event.target;
+        buyBtn.disabled = true;
+        buyBtn.textContent = 'Processing...';
+
+        try {
+          const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+          if (!token) {
+            alert('Please login first');
+            window.location.href = 'login.html';
+            return;
+          }
+
+          console.log('Placing quick contract order:', { symbol, direction, seconds: selectedSeconds, amount });
+
+          const response = await fetch('http://localhost:3000/api/quick-contract/place', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              symbol,
+              direction,
+              seconds: selectedSeconds,
+              amount
+            })
+          });
+
+          const result = await response.json();
+          
+          console.log('Server response:', result);
+
+          if (result.success) {
+            // 显示倒计时模态框（后台已经返回了交易结果）
+            showCountdownModal(direction, symbol, amount, result);
+          } else {
+            alert(result.error || 'Failed to place order');
+          }
+        } catch (error) {
+          console.error('Error placing order:', error);
+          alert('Error placing order: ' + error.message);
+        } finally {
+          buyBtn.disabled = false;
+          buyBtn.textContent = direction === 'long' ? 'Buy Long' : 'Buy Short';
+        }
+      }
+
+      function showCountdownModal(direction, symbol, amount, orderData) {
+        const modal = document.getElementById('countdownModal');
+        
+        // 更新倒计时界面信息
+        document.getElementById('orderDirection').textContent = direction === 'long' ? 'Buy Long ↑' : 'Buy Short ↓';
+        document.getElementById('orderSymbol').textContent = symbol + '/USDT';
+        document.getElementById('modalAmount').textContent = amount.toFixed(2) + ' USDT';
+        document.getElementById('modalEntryPrice').textContent = '$' + orderData.entryPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
+        document.getElementById('modalProfit').textContent = (orderData.profit >= 0 ? '+' : '') + orderData.profit.toFixed(2) + ' USDT';
+
+        // 显示模态框
+        modal.classList.add('active');
+        document.getElementById('countdownPhase').style.display = 'block';
+        document.getElementById('resultPhase').classList.remove('show');
+
+        // 启动倒计时 - 倒计时结束后显示后台返回的真实结果
+        startCountdownTimer(direction, symbol, amount, orderData);
+      }
+
+      function startCountdownTimer(direction, symbol, amount, orderData) {
+        let remainingSeconds = selectedSeconds;
+        
+        if (countdownInterval) clearInterval(countdownInterval);
+
+        // 立即更新一次
+        document.getElementById('countdownDisplay').textContent = remainingSeconds;
+
+        countdownInterval = setInterval(() => {
+          remainingSeconds--;
+          document.getElementById('countdownDisplay').textContent = remainingSeconds;
+
+          if (remainingSeconds <= 0) {
+            clearInterval(countdownInterval);
+            // 显示后台返回的真实结果
+            showTradeResult(direction, symbol, amount, orderData);
+          }
+        }, 1000);
+      }
+
+      function showTradeResult(direction, symbol, amount, orderData) {
+        // 使用后台返回的真实结果
+        const isWin = orderData.result === 'win';
+        const entryPrice = orderData.entryPrice;
+        const exitPrice = orderData.exitPrice;
+        const profit = orderData.profit;
+        const newBalance = orderData.newBalance;
+        
+        // 更新结果界面
+        const resultPhase = document.getElementById('resultPhase');
+        const resultBadge = document.getElementById('resultBadge');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultAmount = document.getElementById('resultAmount');
+        
+        if (isWin) {
+          resultBadge.textContent = '🎉';
+          resultTitle.textContent = 'Trade Won!';
+          resultAmount.textContent = '+' + profit.toFixed(2) + ' USDT';
+          resultAmount.style.color = '#00d084';
+        } else {
+          resultBadge.textContent = '😢';
+          resultTitle.textContent = 'Trade Loss';
+          resultAmount.textContent = profit.toFixed(2) + ' USDT';
+          resultAmount.style.color = '#ff6b6b';
+        }
+        
+        // 更新详细信息
+        document.getElementById('resultDirection').textContent = direction === 'long' ? 'Buy Long ↑' : 'Buy Short ↓';
+        document.getElementById('resultEntryPrice').textContent = '$' + entryPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
+        document.getElementById('resultExitPrice').textContent = '$' + exitPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
+        
+        // 计算利率
+        const priceChangePercent = ((exitPrice - entryPrice) / entryPrice * 100).toFixed(2);
+        document.getElementById('resultRate').textContent = (priceChangePercent >= 0 ? '+' : '') + priceChangePercent + '%';
+        
+        // 显示新余额
+        const newBalanceInfo = document.createElement('div');
+        newBalanceInfo.style.cssText = 'margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 13px; color: var(--muted);';
+        newBalanceInfo.innerHTML = `New Balance: <span style="color: var(--text); font-weight: 700;">$${newBalance}</span>`;
+        
+        const resultDetails = document.querySelector('.result-details');
+        if (resultDetails.querySelector('[data-balance]')) {
+          resultDetails.querySelector('[data-balance]').remove();
+        }
+        newBalanceInfo.setAttribute('data-balance', 'true');
+        resultDetails.appendChild(newBalanceInfo);
+        
+        // 显示结果界面
+        document.getElementById('countdownPhase').style.display = 'none';
+        resultPhase.classList.add('show');
+      }          exitPrice = entryPrice * (0.98 + Math.random() * 0.02);
+        }
+
+        const profit = isWin ? orderData.potentialProfit : -amount * 0.1;
+        const profitRate = ((exitPrice - entryPrice) / entryPrice * 100).toFixed(2);
+
+        // 更新结果界面
+        document.getElementById('resultPhase').classList.add('show');
+        
+        if (isWin) {
+          document.getElementById('resultBadge').textContent = '🎉';
+          document.getElementById('resultTitle').textContent = 'Trade Win!';
+          document.getElementById('resultTitle').style.color = 'var(--success)';
+          document.getElementById('resultAmount').textContent = '+' + profit.toFixed(2) + ' USDT';
+          document.getElementById('resultAmount').classList.remove('result-loss');
+        } else {
+          document.getElementById('resultBadge').textContent = '😢';
+          document.getElementById('resultTitle').textContent = 'Trade Loss';
+          document.getElementById('resultTitle').style.color = 'var(--danger)';
+          document.getElementById('resultAmount').textContent = profit.toFixed(2) + ' USDT';
+          document.getElementById('resultAmount').classList.add('result-loss');
+        }
+
+        document.getElementById('resultDirection').textContent = direction === 'long' ? 'Buy Long ↑' : 'Buy Short ↓';
+        document.getElementById('resultEntryPrice').textContent = '$' + entryPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
+        document.getElementById('resultExitPrice').textContent = '$' + exitPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
+        document.getElementById('resultRate').textContent = (isWin ? '+' : '') + profitRate + '%';
+      }
+
+      function closeCountdownModal() {
+        const modal = document.getElementById('countdownModal');
+        modal.classList.remove('active');
+        if (countdownInterval) clearInterval(countdownInterval);
+      }
+
+      function startQuickCountdown() {
+        let seconds = selectedSeconds;
+        if (countdownInterval) clearInterval(countdownInterval);
+        
+        countdownInterval = setInterval(() => {
+          document.getElementById('countdown').textContent = seconds + 's';
+          seconds--;
+          if (seconds < 0) {
+            clearInterval(countdownInterval);
+            document.getElementById('countdown').textContent = selectedSeconds + 's';
+          }
+        }, 1000);
+      }
+
+      function goBack() {
+        window.location.href = 'trade.html';
+      }
+
+      function switchTradeMode(mode, btn) {
+        // Hide all sections
+        document.querySelectorAll('.trade-section').forEach(section => {
+          section.style.display = 'none';
+          section.classList.remove('active');
+        });
+
+        // Remove active class from all tabs
+        document.querySelectorAll('.trade-tab').forEach(tab => {
+          tab.classList.remove('active');
+        });
+
+        // Show selected section and activate tab
+        const section = document.getElementById(mode + '-section');
+        if (section) {
+          section.style.display = 'block';
+          section.classList.add('active');
+        }
+        btn.classList.add('active');
+      }
+
+      function switchTradeType(type, btn) {
+        btn.parentElement.querySelectorAll('.contract-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+      }
+
+      function setAmount(amount) {
+        // Set amount logic
+      }
+
+      async function placeOrder(type) {
+        const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+        if (!token) {
+          alert('Please sign in first');
+          window.location.href = 'login.html';
+          return;
+        }
+
+        if (type === 'spot') {
+          // Spot Trading
+          const symbol = document.querySelector('#spot-section select')?.value || 'BTC';
+          const priceInput = document.querySelectorAll('#spot-section input')[0];
+          const amountInput = document.querySelectorAll('#spot-section input')[1];
+          const sideButton = document.querySelector('#spot-section .contract-tab.active');
+          
+          const price = parseFloat(priceInput?.value) || 0;
+          const amount = parseFloat(amountInput?.value) || 0;
+          const side = sideButton?.textContent.toLowerCase() === 'buy' ? 'buy' : 'sell';
+
+          if (price <= 0 || amount <= 0) {
+            alert('Please enter valid price and amount');
+            return;
+          }
+
+          try {
+            const response = await fetch('http://localhost:3000/api/spot/place-order', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ symbol, side, price, amount })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+              alert(`${side.toUpperCase()} order placed successfully!\nOrder ID: ${result.orderId}\nStatus: ${result.status}`);
+              // Reset form
+              priceInput.value = '';
+              amountInput.value = '';
+              loadUserAssets();
+            } else {
+              alert('Error: ' + result.error);
+            }
+          } catch (error) {
+            console.error('Error placing spot order:', error);
+            alert('Failed to place order. Please try again.');
+          }
+        } else if (type === 'long' || type === 'short') {
+          // Perpetual Futures
+          const leverageValue = document.getElementById('leverage-value')?.textContent || '1x';
+          const leverage = parseInt(leverageValue);
+          const priceInput = document.querySelectorAll('#perpetual-section input')[1];
+          const amountInput = document.querySelectorAll('#perpetual-section input')[0];
+          
+          const entryPrice = parseFloat(priceInput?.value) || 0;
+          const amount = parseFloat(amountInput?.value) || 0;
+          const symbol = 'BTC';
+          const side = type;
+
+          if (entryPrice <= 0 || amount <= 0) {
+            alert('Please enter valid price and amount');
+            return;
+          }
+
+          try {
+            const response = await fetch('http://localhost:3000/api/perpetual/open-position', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ symbol, side, leverage, price: entryPrice, amount })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+              alert(`${side.toUpperCase()} position opened successfully!\nPosition ID: ${result.positionId}\nLeverage: ${result.leverage}x\nNotional Value: $${result.notionalValue}`);
+              // Reset form
+              priceInput.value = '';
+              amountInput.value = '';
+              loadUserAssets();
+            } else {
+              alert('Error: ' + result.error);
+            }
+          } catch (error) {
+            console.error('Error opening perpetual position:', error);
+            alert('Failed to open position. Please try again.');
+          }
+        }
+      }
+
+      function updateLeverage(value) {
+        document.getElementById('leverage-value').textContent = value + 'x';
+        updateMarginInfo();
+      }
+
+      function setLeverage(value) {
+        document.getElementById('leverage-value').textContent = value + 'x';
+        document.querySelector('#perpetual-section input[type="range"]').value = value;
+        updateMarginInfo();
+      }
+
+      function updateMarginInfo() {
+        const priceInput = document.querySelectorAll('#perpetual-section input')[2];
+        const amountInput = document.querySelectorAll('#perpetual-section input')[0];
+        const leverageValue = document.getElementById('leverage-value').textContent;
+        const leverage = parseInt(leverageValue);
+        
+        const price = parseFloat(priceInput?.value) || 0;
+        const amount = parseFloat(amountInput?.value) || 0;
+        
+        if (price > 0 && amount > 0) {
+          const requiredMargin = (price * amount) / leverage;
+          document.getElementById('requiredMargin').textContent = requiredMargin.toFixed(2) + ' USDT';
+          
+          const liquidationPrice = price * (1 - (100 / (leverage * 100)));
+          document.getElementById('liquidationPrice').textContent = '$' + liquidationPrice.toFixed(2);
+        }
+      }
+
+      async function loadUserAssets() {
+        try {
+          const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+          if (!token) return;
+
+          const response = await fetch('http://localhost:3000/api/assets', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          const result = await response.json();
+          if (result.success && result.balances) {
+            const usdt = result.balances.USDT || 0;
+            const spotBalance = document.getElementById('spotBalance');
+            const perpetualMargin = document.getElementById('perpetualMargin');
+            
+            if (spotBalance) spotBalance.textContent = `$${usdt.toFixed(2)}`;
+            if (perpetualMargin) perpetualMargin.textContent = `$${usdt.toFixed(2)}`;
+            
+            // Update quick contract available balance too
+            const availBalance = document.getElementById('availBalance');
+            if (availBalance) availBalance.textContent = `${usdt.toFixed(2)} USDT`;
+          }
+        } catch (error) {
+          console.error('Error loading user assets:', error);
+        }
+      }
+
+      function startCountdown() {
+        let seconds = 30;
+        const timer = setInterval(() => {
+          document.getElementById('countdown').textContent = seconds + 's';
+          seconds--;
+          if (seconds < 0) clearInterval(timer);
+        }, 1000);
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        updateNavbar();
+        loadSupportLink();
+        loadQuickContractConfig();
+        loadUserAssets();
+        
+        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+        document.querySelectorAll('.main-nav .nav-link').forEach(item => {
+          const href = item.getAttribute('href');
+          if (href === 'trade.html') {
+            item.classList.add('active');
+          } else {
+            item.classList.remove('active');
+          }
+        });
+        
+        // Handle login prompt display
+        const user = getCurrentUser();
+        const loginPrompt = document.getElementById('loginPrompt');
+        const tradeContainer = document.querySelector('.trade-container');
+        
+        if (user) {
+          // User is logged in
+          if (loginPrompt) loginPrompt.style.display = 'none';
+          if (tradeContainer) tradeContainer.style.display = 'block';
+        } else {
+          // User is not logged in
+          if (loginPrompt) loginPrompt.style.display = 'block';
+          if (tradeContainer) tradeContainer.style.display = 'none';
+        }
+        
+        startQuickCountdown();
+
+        // Trade tab switching
+        document.querySelectorAll('.trade-tab').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const mode = this.getAttribute('data-mode');
+            switchTradeMode(mode, this);
+          });
+        });
+
+        // 点击模态框外部关闭
+        document.getElementById('countdownModal').addEventListener('click', function(e) {
+          if (e.target === this) {
+            closeCountdownModal();
+          }
+        });
+
+        // ESC键关闭模态框
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape') {
+            closeCountdownModal();
+          }
+        });
+      });
+
+      async function loadSupportLink() {
+        try {
+          const supportLink = document.getElementById('supportLink');
+          if (supportLink) {
+            supportLink.href = 'customer-support.html';
+            supportLink.style.display = 'inline-block';
+            supportLink.title = 'Customer Support';
+          }
+        } catch (error) {
+          console.error('Error loading support link:', error);
+        }
+      }
+
+      // ===== My Orders Functions =====
+      let allOrders = [];
+      let currentOrderFilter = 'all';
+
+      async function loadMyOrders() {
+        try {
+          const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+          if (!token) {
+            console.log('Not logged in, cannot load orders');
+            return;
+          }
+
+          const response = await fetch('http://localhost:3000/api/quick-contract/orders', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          const result = await response.json();
+          if (result.success && result.data) {
+            allOrders = result.data;
+            updateOrderStats(result.stats);
+            displayOrders(allOrders);
+          }
+        } catch (error) {
+          console.error('Error loading orders:', error);
+        }
+      }
+
+      function updateOrderStats(stats) {
+        if (!stats) return;
+        
+        document.getElementById('totalOrders').textContent = stats.totalOrders || 0;
+        document.getElementById('winRate').textContent = stats.winRate || '0%';
+        document.getElementById('totalProfit').textContent = '+' + (stats.totalProfit || '0') + ' USDT';
+      }
+
+      function displayOrders(orders) {
+        const container = document.getElementById('myOrdersList');
+        
+        if (!orders || orders.length === 0) {
+          container.innerHTML = '<div style="text-align: center; padding: 32px; color: var(--muted); font-size: 14px;">No orders yet</div>';
+          return;
+        }
+
+        let filtered = orders;
+        if (currentOrderFilter === 'active') {
+          filtered = orders.filter(o => o.status === 'pending');
+        } else if (currentOrderFilter === 'win') {
+          filtered = orders.filter(o => o.result === 'win');
+        } else if (currentOrderFilter === 'loss') {
+          filtered = orders.filter(o => o.result === 'loss');
+        }
+
+        container.innerHTML = filtered.map(order => {
+          const isWin = order.result === 'win';
+          const isPending = order.status === 'pending';
+          const profitColor = isWin ? 'var(--success)' : isPending ? 'var(--muted)' : 'var(--danger)';
+          const profitText = isPending ? 'Pending' : (isWin ? '+' : '-') + Math.abs(order.profit || 0) + ' USDT';
+
+          return `
+            <div style="padding: 12px; background: var(--panel-2); border-radius: 8px; border-left: 3px solid ${profitColor};">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                <div>
+                  <div style="font-weight: 600; font-size: 14px;">${order.symbol}</div>
+                  <div style="font-size: 12px; color: var(--muted);">${new Date(order.createdAt).toLocaleString()}</div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-weight: 700; font-size: 14px; color: ${profitColor};">${profitText}</div>
+                  <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">${order.direction.toUpperCase()}</div>
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 11px;">
+                <div>
+                  <span style="color: var(--muted);">Entry: </span>
+                  <span style="color: var(--text);">$${order.entryPrice}</span>
+                </div>
+                <div>
+                  <span style="color: var(--muted);">Exit: </span>
+                  <span style="color: var(--text);">${order.exitPrice ? '$' + order.exitPrice : '-'}</span>
+                </div>
+                <div>
+                  <span style="color: var(--muted);">Amount: </span>
+                  <span style="color: var(--text);">${order.amount} USDT</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function filterOrders(type) {
+        currentOrderFilter = type;
+        // Update active tab styling
+        document.querySelectorAll('#orders-section .contract-tab').forEach((btn, idx) => {
+          const types = ['all', 'active', 'win', 'loss'];
+          btn.classList.toggle('active', types[idx] === type);
+        });
+        displayOrders(allOrders);
+      }
+
+      function refreshMyOrders() {
+        loadMyOrders();
+      }
+
+      // Load orders when switching to orders section
+      const originalSwitchMode = window.switchTradeMode;
+      window.switchTradeMode = function(mode, btn) {
+        if (originalSwitchMode) {
+          originalSwitchMode.call(this, mode, btn);
+        }
+        if (mode === 'orders') {
+          loadMyOrders();
+        }
+      };
+
+      // Initial load
+      document.addEventListener('DOMContentLoaded', function() {
+        loadMyOrders();
+        initializeCharts();
+        updatePricesInRealtime();
+      });
+
+      // ==================== K线图功能 ====================
+      let charts = {};
+      let chartData = {};
+
+      // 更新秒合约图表
+      function updateQuickChart() {
+        const symbol = document.getElementById('quickSymbol')?.value || 'BTC';
+        createChart('quickChart', symbol);
+        updateSymbolPrice('quickPrice', symbol);
+      }
+
+      // 更新现货图表
+      function updateSpotChart() {
+        const symbol = document.getElementById('spotSymbol')?.value || 'BTC';
+        createChart('spotChart', symbol);
+        updateSymbolPrice('spotPrice', symbol);
+      }
+
+      // 更新永续合约图表
+      function updatePerpetualChart() {
+        const symbol = document.getElementById('perpetualSymbol')?.value || 'BTC';
+        createChart('perpetualChart', symbol);
+        updateSymbolPrice('perpetualPrice', symbol);
+      }
+
+      // 更新币种价格显示
+      function updateSymbolPrice(elementId, symbol) {
+        const element = document.getElementById(elementId);
+        if (element && chartData[symbol] && chartData[symbol].length > 0) {
+          const lastCandle = chartData[symbol][chartData[symbol].length - 1];
+          element.textContent = `$${lastCandle.close.toFixed(2)}`;
+        }
+      }
+
+      // 初始化K线图
+      async function initializeCharts() {
+        const symbols = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'LTC'];
+        
+        for (const symbol of symbols) {
+          try {
+            await loadChartData(symbol);
+          } catch (error) {
+            console.error(`Error loading chart for ${symbol}:`, error);
+          }
+        }
+
+        // 初始化默认图表
+        updateQuickChart();
+        updateSpotChart();
+        updatePerpetualChart();
+      }
+
+      // 加载K线数据
+      async function loadChartData(symbol) {
+        try {
+          const response = await fetch(`http://localhost:3000/api/market-klines/${symbol}?timeframe=1m`);
+          const result = await response.json();
+          
+          if (result.success && result.data) {
+            chartData[symbol] = result.data;
+            return result.data;
+          }
+        } catch (error) {
+          console.error(`Error loading chart data for ${symbol}:`, error);
+        }
+      }
+
+      // 创建K线图（使用 TradingView Lightweight Charts）
+      function createChart(containerId, symbol, timeframe = '1m') {
+        try {
+          const container = document.getElementById(containerId);
+          if (!container) return null;
+
+          // 清除旧图表
+          if (charts[containerId]) {
+            container.innerHTML = '';
+            delete charts[containerId];
+          }
+
+          const { createChart } = window.LightweightCharts;
+          
+          const chart = createChart(container, {
+            width: container.clientWidth,
+            height: 250,
+            layout: {
+              background: { color: 'transparent' },
+              textColor: '#9ca3af'
+            },
+            timeScale: {
+              timeVisible: true,
+              secondsVisible: false
+            },
+            grid: {
+              hStyle: 0.1,
+              vLines: { color: '#1e293b' },
+              hLines: { color: '#1e293b' }
+            }
+          });
+
+          const candleSeries = chart.addCandlestickSeries({
+            upColor: '#22c55e',
+            downColor: '#ef4444',
+            wickUpColor: '#22c55e',
+            wickDownColor: '#ef4444'
+          });
+
+          // 添加数据
+          if (chartData[symbol]) {
+            candleSeries.setData(chartData[symbol]);
+          }
+
+          // 自动调整范围
+          chart.timeScale().fitContent();
+
+          charts[containerId] = chart;
+
+          // 响应式调整
+          window.addEventListener('resize', () => {
+            if (container && container.clientWidth > 0) {
+              chart.applyOptions({ width: container.clientWidth });
+            }
+          });
+
+          return chart;
+        } catch (error) {
+          console.error('Error creating chart:', error);
+          return null;
+        }
+      }
+
+      // 实时更新价格
+      async function updatePricesInRealtime() {
+        const updateInterval = setInterval(async () => {
+          try {
+            const response = await fetch('http://localhost:3000/api/prices');
+            const result = await response.json();
+            
+            if (result.success && result.data) {
+              const prices = result.data;
+              
+              // 更新秒合约价格显示
+              updatePriceDisplay(prices);
+              
+              // 每5分钟刷新K线数据
+              if (Math.random() > 0.95) {
+                initializeCharts();
+              }
+            }
+          } catch (error) {
+            console.error('Error updating prices:', error);
+          }
+        }, 5000); // 每5秒更新一次
+      }
+
+      // 更新价格显示
+      function updatePriceDisplay(prices) {
+        const symbols = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'LTC'];
+        
+        symbols.forEach(symbol => {
+          const elements = document.querySelectorAll(`[data-symbol="${symbol}"]`);
+          elements.forEach(el => {
+            if (el && prices[symbol]) {
+              el.textContent = `$${prices[symbol].toFixed(2)}`;
+            }
+          });
+        });
+      }
+
+      // 响应式调整图表大小
+      window.addEventListener('resize', () => {
+        Object.values(charts).forEach((chart, key) => {
+          if (chart && chart.applyOptions) {
+            const container = document.getElementById(key);
+            if (container && container.clientWidth > 0) {
+              chart.applyOptions({ width: container.clientWidth });
+            }
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

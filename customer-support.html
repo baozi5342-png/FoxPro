@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Support - FoxPro</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #1976d2;
+      --secondary: #4caf50;
+      --danger: #f44336;
+      --warning: #ff9800;
+      --light: #f5f5f5;
+      --dark: #333;
+      --border: #e0e0e0;
+      --container-max: 420px;
+      --gap: 12px;
+      --radius: 12px;
+      --topbar-height: auto;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #fff;
+      color: var(--dark);
+      margin: 0;
+      padding: 0;
+    }
+
+    /* 顶部导航 */
+    .topbar {
+      background: var(--primary);
+      color: white;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: var(--gap);
+      padding: 0 16px;
+    }
+
+    .back-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius);
+      transition: background 0.2s;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .topbar-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    /* 聊天容器 */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 56px);
+      max-width: var(--container-max);
+      margin: 0 auto;
+      background: white;
+    }
+
+    .messages-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px var(--gap);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message {
+      display: flex;
+      gap: var(--gap);
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .message.admin {
+      justify-content: flex-start;
+    }
+
+    .message-bubble {
+      max-width: 75%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      word-wrap: break-word;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .message.user .message-bubble {
+      background: var(--primary);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.admin .message-bubble {
+      background: var(--light);
+      color: var(--dark);
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .message-time {
+      font-size: 12px;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .message.user .message-time {
+      text-align: right;
+    }
+
+    /* 输入框区域 */
+    .input-area {
+      padding: var(--gap);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: var(--gap);
+      background: white;
+    }
+
+    .message-input {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      max-height: 80px;
+      overflow-y: auto;
+    }
+
+    .message-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+    }
+
+    .send-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      padding: 12px 20px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .send-btn:hover {
+      background: #1565c0;
+    }
+
+    .send-btn:active {
+      background: #0d47a1;
+    }
+
+    .send-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    /* 加载状态 */
+    .loading-indicator {
+      text-align: center;
+      padding: 20px;
+      color: #999;
+      font-size: 14px;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* 响应式 */
+    @media (min-width: 480px) {
+      :root {
+        --container-max: 500px;
+      }
+
+      .message-bubble {
+        max-width: 60%;
+      }
+    }
+
+    @media (min-width: 768px) {
+      :root {
+        --container-max: 600px;
+      }
+
+      .message-bubble {
+        max-width: 50%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航 -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" id="backBtn" title="Back">←</button>
+      <div class="topbar-title">Customer Support</div>
+    </div>
+  </div>
+
+  <!-- 聊天容器 -->
+  <div class="chat-container">
+    <div class="messages-area" id="messagesArea">
+      <div class="loading-indicator">
+        <div class="loading-spinner"></div>
+        <div style="margin-top: 8px;">Loading messages...</div>
+      </div>
+    </div>
+
+    <!-- 输入框区域 -->
+    <div class="input-area">
+      <textarea 
+        id="messageInput" 
+        class="message-input" 
+        placeholder="Type your message..." 
+        rows="1"
+      ></textarea>
+      <button class="send-btn" id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <script src="auth.js"></script>
+  <script>
+    const backBtn = document.getElementById('backBtn');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const messagesArea = document.getElementById('messagesArea');
+
+    let currentUser = null;
+    let autoScrollEnabled = true;
+
+    // 返回按钮
+    backBtn.addEventListener('click', () => {
+      window.history.back();
+    });
+
+    // 初始化
+    async function init() {
+      currentUser = getCurrentUser();
+      if (!currentUser) {
+        alert('Please log in first');
+        window.location.href = 'index.html';
+        return;
+      }
+
+      // 加载历史消息
+      await loadMessages();
+
+      // 每 2 秒检查一次新消息（仅在有消息的情况下）
+      setInterval(loadMessages, 5000);
+    }
+
+    // 加载消息
+    async function loadMessages() {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+
+        const response = await fetch(`http://localhost:3000/api/support/messages/${currentUser.id}`, {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const messages = await response.json();
+
+        // 清空消息区域（除非正在滚动）
+        if (autoScrollEnabled) {
+          messagesArea.innerHTML = '';
+
+          if (messages.length === 0) {
+            messagesArea.innerHTML = '<div class="loading-indicator" style="color: #999;">No messages yet. Start a conversation!</div>';
+          } else {
+            messages.forEach(msg => {
+              const msgEl = createMessageElement(msg);
+              messagesArea.appendChild(msgEl);
+            });
+
+            // 自动滚到底部
+            setTimeout(() => {
+              messagesArea.scrollTop = messagesArea.scrollHeight;
+            }, 0);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading messages:', error);
+        if (messagesArea.innerHTML.includes('Loading messages')) {
+          messagesArea.innerHTML = '<div class="loading-indicator" style="color: #999;">Unable to connect to support service. Please check your connection or try again later.</div>';
+        }
+      }
+    }
+
+    // 创建消息元素
+    function createMessageElement(msg) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message ${msg.role}`;
+
+      const time = new Date(msg.createdAt).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      msgDiv.innerHTML = `
+        <div>
+          <div class="message-bubble">${escapeHtml(msg.message)}</div>
+          <div class="message-time">${time}</div>
+        </div>
+      `;
+
+      return msgDiv;
+    }
+
+    // 转义 HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 自动调整输入框高度
+    messageInput.addEventListener('input', () => {
+      messageInput.style.height = 'auto';
+      messageInput.style.height = Math.min(messageInput.scrollHeight, 80) + 'px';
+    });
+
+    // 发送消息
+    sendBtn.addEventListener('click', async () => {
+      const message = messageInput.value.trim();
+      if (!message) return;
+
+      try {
+        sendBtn.disabled = true;
+        autoScrollEnabled = false;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+
+        await fetch('http://localhost:3000/api/support/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            username: currentUser.username,
+            message: message
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+
+        // 重新加载消息
+        await loadMessages();
+        autoScrollEnabled = true;
+      } catch (error) {
+        console.error('Error sending message:', error);
+        alert('Failed to send message. Please check your connection.');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+
+    // 回车发送消息
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendBtn.click();
+      }
+    });
+
+    // 初始化
+    init();
+  </script>
+</body>
+</html>

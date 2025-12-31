@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up - FoxPro Exchange</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .register-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      padding: 20px;
+    }
+
+    .register-card {
+      width: 100%;
+      max-width: 320px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .register-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .register-header .logo {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .register-header .logo span {
+      color: var(--primary);
+    }
+
+    .register-header p {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .register-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group select {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 13px;
+      transition: all 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: var(--bg);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-group input::placeholder {
+      color: var(--muted);
+    }
+
+    .password-strength {
+      display: flex;
+      gap: 3px;
+      margin-top: 4px;
+    }
+
+    .strength-bar {
+      flex: 1;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .strength-bar.weak {
+      background: #ef4444;
+    }
+
+    .strength-bar.medium {
+      background: #f59e0b;
+    }
+
+    .strength-bar.strong {
+      background: #10b981;
+    }
+
+    .strength-text {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .password-requirements {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .requirement {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .requirement.met {
+      color: var(--success);
+    }
+
+    .requirement::before {
+      content: "✕";
+      font-weight: bold;
+      color: inherit;
+    }
+
+    .requirement.met::before {
+      content: "✓";
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .register-btn {
+      padding: 10px 16px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 6px;
+    }
+
+    .register-btn:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .register-btn:active {
+      transform: translateY(0);
+    }
+
+    .register-btn.loading {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .terms {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .terms a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .terms a:hover {
+      text-decoration: underline;
+    }
+
+    .terms label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+      cursor: pointer;
+    }
+
+    .terms input {
+      width: auto;
+      margin: 0;
+    }
+
+    .register-footer {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .register-footer a {
+      color: var(--primary);
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .register-footer a:hover {
+      color: #60a5fa;
+      text-decoration: underline;
+    }
+
+    .error-msg {
+      padding: 8px 12px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid #ef4444;
+      border-radius: 8px;
+      color: #fca5a5;
+      font-size: 12px;
+      display: none;
+      margin-bottom: 8px;
+    }
+
+    .error-msg.show {
+      display: block;
+    }
+
+    .success-msg {
+      padding: 12px 16px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid #10b981;
+      border-radius: 8px;
+      color: #86efac;
+      font-size: 14px;
+      display: none;
+      margin-bottom: 10px;
+    }
+
+    .success-msg.show {
+      display: block;
+    }
+  </style>
+</head>
+<body style="background: var(--bg);">
+  <div class="register-container">
+    <div class="register-card">
+      <div class="register-header">
+        <div class="logo">FoxPro<span>Exchange</span></div>
+        <p>Start Your Trading Journey</p>
+      </div>
+
+      <div id="errorMsg" class="error-msg"></div>
+      <div id="successMsg" class="success-msg"></div>
+
+      <form class="register-form" id="registerForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input 
+            type="text" 
+            id="username" 
+            placeholder="Enter username (3-20 characters)"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input 
+            type="email" 
+            id="email" 
+            placeholder="Enter email address"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input 
+            type="tel" 
+            id="phone" 
+            placeholder="Enter phone number"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input 
+            type="password" 
+            id="password" 
+            placeholder="At least 6 characters"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <input 
+            type="password" 
+            id="confirmPassword" 
+            placeholder="Confirm your password"
+            required
+          >
+        </div>
+
+        <div style="font-size: 12px; color: var(--muted); margin: 15px 0; line-height: 1.6;">
+          I have read and agree to
+          <a href="terms.html" target="_blank" style="color: var(--primary); text-decoration: none;">Terms of Service</a> and
+          <a href="#" target="_blank" style="color: var(--primary); text-decoration: none;">Privacy Policy</a>
+          <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px; cursor: pointer;">
+            <input type="checkbox" id="agreeTerms" required style="width: auto; margin: 0;">
+            <span>I agree to the above terms</span>
+          </label>
+        </div>
+
+        <button type="submit" class="register-btn" id="registerBtn">Create Account</button>
+      </form>
+
+      <div class="register-footer" style="text-align: center; margin-top: 20px; font-size: 14px; color: var(--muted);">
+        Already have an account? <a href="login.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">Sign in here</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:3000/api";
+
+    // 显示消息提示
+    function showMessage(message, type = 'error') {
+      const form = document.querySelector('.register-form');
+      let messageEl = document.getElementById('message');
+      if (!messageEl) {
+        messageEl = document.createElement('div');
+        messageEl.id = 'message';
+        messageEl.style.cssText = `
+          padding: 12px 16px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+          text-align: center;
+          font-size: 14px;
+          display: none;
+        `;
+        form.insertBefore(messageEl, form.firstChild);
+      }
+      messageEl.textContent = message;
+      messageEl.style.display = 'block';
+      messageEl.style.backgroundColor = type === 'success' ? '#10b981' : '#ef4444';
+      messageEl.style.color = '#ffffff';
+    }
+
+    // 验证密码强度
+    function getPasswordStrength(password) {
+      let strength = 0;
+      if (password.length >= 6) strength++;
+      if (password.length >= 8) strength++;
+      if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+      if (/[0-9]/.test(password)) strength++;
+      if (/[^a-zA-Z0-9]/.test(password)) strength++;
+      return strength;
+    }
+
+    // 实时显示密码强度
+    document.getElementById('password').addEventListener('input', (e) => {
+      const password = e.target.value;
+      const strength = getPasswordStrength(password);
+      const bars = document.querySelectorAll('.strength-bar');
+      bars.forEach((bar, index) => {
+        if (index < strength) {
+          bar.style.backgroundColor = strength <= 1 ? '#ef4444' : strength <= 2 ? '#f59e0b' : '#10b981';
+        } else {
+          bar.style.backgroundColor = 'var(--border)';
+        }
+      });
+    });
+
+    // 注册处理
+    document.querySelector('.register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      const phone = document.getElementById('phone').value;
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const agreeTerms = document.getElementById('agreeTerms').checked;
+      const registerBtn = document.getElementById('registerBtn');
+
+      // 验证输入
+      if (password.length < 6) {
+        showMessage('密码至少需要 6 个字符', 'error');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showMessage('两次输入的密码不一致', 'error');
+        return;
+      }
+
+      if (!email.includes('@')) {
+        showMessage('Email must contain @', 'error');
+        return;
+      }
+
+      if (!/^\d{11}$/.test(phone)) {
+        showMessage('Phone number must be 11 digits', 'error');
+        return;
+      }
+
+      if (!agreeTerms) {
+        showMessage('请同意服务条款', 'error');
+        return;
+      }
+
+      // 禁用按钮，显示加载状态
+      registerBtn.disabled = true;
+      registerBtn.textContent = '注册中...';
+
+      try {
+        const response = await fetch(`${API_BASE}/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username, email, phone, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showMessage(data.message || '注册失败，请检查输入', 'error');
+          registerBtn.disabled = false;
+          registerBtn.textContent = '创建账户';
+          return;
+        }
+
+        showMessage('注册成功！正在跳转到登录页面...', 'success');
+        
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 1500);
+      } catch (error) {
+        console.error('注册错误:', error);
+        showMessage('网络错误，请重试', 'error');
+        registerBtn.disabled = false;
+        registerBtn.textContent = '创建账户';
+      }
+    });
+
+    // 页面加载时检查是否已登录
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        // 用户已登录，重定向到主页
+        const isAdmin = localStorage.getItem('isAdmin') === 'true';
+        window.location.href = isAdmin ? 'admin-new.html' : 'index.html';
+      }
+    });
+  </script>
+</body>
+</html>

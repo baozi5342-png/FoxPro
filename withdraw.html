@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Withdraw - FoxPro Exchange</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .form-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .form-card h3 {
+        margin-bottom: 16px;
+        font-weight: 600;
+      }
+
+      .form-group {
+        margin-bottom: 16px;
+      }
+
+      .form-group label {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+
+      .form-group input,
+      .form-group select {
+        width: 100%;
+        padding: 10px 12px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      .form-group input:focus,
+      .form-group select:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .balance-display {
+        background: var(--panel-2);
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .balance-label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .balance-value {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .quick-amount-btn {
+        padding: 6px 12px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--primary);
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .quick-amount-btn:hover {
+        background: var(--primary);
+        color: white;
+      }
+
+      .submit-btn {
+        width: 100%;
+        padding: 12px;
+        background: var(--primary);
+        border: 1px solid var(--primary);
+        border-radius: 6px;
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 12px;
+      }
+
+      .submit-btn:hover {
+        opacity: 0.8;
+      }
+
+      .fee-info {
+        background: var(--panel-2);
+        border-left: 3px solid var(--warning);
+        border-radius: 4px;
+        padding: 12px;
+        margin: 12px 0;
+        font-size: 12px;
+      }
+
+      .withdraw-list {
+        margin-top: 20px;
+      }
+
+      .withdraw-item {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .withdraw-item-left {
+        flex: 1;
+      }
+
+      .withdraw-item-title {
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+
+      .withdraw-item-time {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .withdraw-item-amount {
+        text-align: right;
+      }
+
+      .withdraw-item-value {
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+
+      .withdraw-status {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: var(--warning);
+        color: white;
+      }
+
+      .withdraw-status.success {
+        background: var(--success);
+      }
+
+      .withdraw-status.rejected {
+        background: var(--danger);
+      }
+
+      .tabs {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 12px;
+      }
+
+      .tab {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        padding-bottom: 8px;
+        border-bottom: 2px solid transparent;
+      }
+
+      .tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+      }
+
+      @media (max-width: 768px) {
+        .form-row {
+          grid-template-columns: 1fr;
+        }
+
+        .withdraw-item {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .withdraw-item-amount {
+          text-align: left;
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="topbar-header">
+          <div class="topbar-left">
+            <div class="logo">FoxPro<span>Exchange</span></div>
+          </div>
+          <div class="topbar-right">
+            <button class="btn ghost" id="logoutBtn" style="display: none;" onclick="logout()">Log Out</button>
+            <a href="#" id="supportLink" title="Customer Support" style="color: var(--primary); font-size: 18px; text-decoration: none; display: none; margin-right: 12px;">
+              💬
+            </a>
+            <span id="userInfo" style="display: none; color: var(--text); margin-right: 15px;"><span id="username"></span></span>
+          </div>
+        </div>
+        <div class="topbar-nav-wrapper">
+          <nav class="main-nav">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="market.html" class="nav-link">Markets</a>
+            <a href="trade.html" class="nav-link">Trade</a>
+            <a href="assets.html" class="nav-link">Assets</a>
+            <a href="account.html" class="nav-link">Account</a>
+          </nav>
+        </div>
+      </header>
+
+      <!-- Login Prompt -->
+      <div id="loginPrompt" style="text-align: center; padding: 40px 20px; background: rgba(59, 130, 246, 0.08); border-radius: 12px; margin-bottom: 20px;">
+        <h2 style="font-size: 20px; margin-bottom: 12px;">Sign in to withdraw</h2>
+        <p style="color: var(--muted); margin-bottom: 16px; font-size: 14px;">Withdraw your funds securely to your wallet</p>
+        <div style="display: flex; gap: 12px;">
+          <button class="btn" style="flex: 1; background: var(--primary); color: white;" onclick="window.location.href='login.html'">Sign In</button>
+          <button class="btn" style="flex: 1; background: none; border: 1px solid var(--border); color: var(--text);" onclick="window.location.href='register.html'">Create Account</button>
+        </div>
+      </div>
+
+      <div id="content-area">
+      <h2 style="margin-bottom: 20px;">Withdraw Cryptocurrency</h2>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('withdraw')">Withdraw</button>
+        <button class="tab" onclick="switchTab('history')">Withdraw History</button>
+      </div>
+
+      <!-- Withdraw form -->
+      <div id="withdraw-tab" style="display: block;">
+        <div class="form-card">
+          <h3>Withdraw Details</h3>
+          <div class="form-group">
+            <label>Cryptocurrency</label>
+            <select id="coinSelect" onchange="updateBalance()">
+              <option value="BTC">Bitcoin (BTC)</option>
+              <option value="ETH">Ethereum (ETH)</option>
+              <option value="USDT">Tether (USDT)</option>
+              <option value="SOL">Solana (SOL)</option>
+              <option value="ADA">Cardano (ADA)</option>
+            </select>
+          </div>
+          <div class="balance-display">
+            <div>
+              <div class="balance-label">Available Balance</div>
+              <div class="balance-value" id="availableBalance">0.15 BTC</div>
+            </div>
+            <div style="text-align: right;">
+              <button class="quick-amount-btn" onclick="setAmount(25)">25%</button>
+              <button class="quick-amount-btn" onclick="setAmount(50)">50%</button>
+              <button class="quick-amount-btn" onclick="setAmount(100)">Max</button>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Network</label>
+              <select id="networkSelect">
+                <option value="mainnet">Mainnet</option>
+                <option value="bsc">BSC (BEP-20)</option>
+                <option value="polygon">Polygon</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Withdrawal Fee</label>
+              <input type="text" disabled value="0.0005 BTC" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Recipient Address</label>
+            <input type="text" placeholder="Enter wallet address" />
+          </div>
+
+          <div class="form-group">
+            <label>Amount to Withdraw</label>
+            <input type="number" id="withdrawAmount" placeholder="0.00" />
+          </div>
+
+          <div class="fee-info">
+            <strong>Network Fee:</strong> 0.0005 BTC (~$4.73)<br/>
+            <strong>You will receive:</strong> <span id="receiveAmount">0.0000 BTC</span>
+          </div>
+
+          <div class="form-group">
+            <label>Withdrawal Password</label>
+            <input type="password" placeholder="Enter your withdrawal password" />
+          </div>
+
+          <button class="submit-btn" onclick="submitWithdraw()">Confirm Withdrawal</button>
+        </div>
+      </div>
+
+      <!-- Withdraw history -->
+      <div id="history-tab" style="display: none;">
+        <div class="form-card">
+          <h3>Withdrawal Records</h3>
+          <div class="withdraw-list">
+            <div class="withdraw-item">
+              <div class="withdraw-item-left">
+                <div class="withdraw-item-title">Bitcoin (BTC) - Mainnet</div>
+                <div class="withdraw-item-time">2025-12-28 10:15:32</div>
+              </div>
+              <div class="withdraw-item-amount">
+                <div class="withdraw-item-value">-0.02 BTC</div>
+                <span class="withdraw-status success">COMPLETED</span>
+              </div>
+            </div>
+
+            <div class="withdraw-item">
+              <div class="withdraw-item-left">
+                <div class="withdraw-item-title">Ethereum (ETH) - Mainnet</div>
+                <div class="withdraw-item-time">2025-12-27 14:42:18</div>
+              </div>
+              <div class="withdraw-item-amount">
+                <div class="withdraw-item-value">-0.5 ETH</div>
+                <span class="withdraw-status">PROCESSING</span>
+              </div>
+            </div>
+
+            <div class="withdraw-item">
+              <div class="withdraw-item-left">
+                <div class="withdraw-item-title">Tether (USDT) - BSC</div>
+                <div class="withdraw-item-time">2025-12-26 09:28:45</div>
+              </div>
+              <div class="withdraw-item-amount">
+                <div class="withdraw-item-value">-200 USDT</div>
+                <span class="withdraw-status rejected">REJECTED</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+      function switchTab(tab) {
+        document.querySelectorAll('[id$="-tab"]').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+        
+        if (tab === 'withdraw') {
+          document.getElementById('withdraw-tab').style.display = 'block';
+          document.querySelectorAll('.tab')[0].classList.add('active');
+        } else {
+          document.getElementById('history-tab').style.display = 'block';
+          document.querySelectorAll('.tab')[1].classList.add('active');
+        }
+      }
+
+      function updateBalance() {
+        const coin = document.getElementById('coinSelect').value;
+        const balances = {
+          'BTC': '0.15 BTC',
+          'ETH': '2.5 ETH',
+          'USDT': '5000 USDT',
+          'SOL': '50 SOL',
+          'ADA': '500 ADA'
+        };
+        document.getElementById('availableBalance').textContent = balances[coin];
+      }
+
+      function setAmount(percent) {
+        alert('Set amount to ' + percent + '%');
+      }
+
+      function submitWithdraw() {
+        if (!isLoggedIn()) {
+          window.location.href = 'login.html';
+          return;
+        }
+        alert('Withdrawal submitted for review');
+      }
+
+      function updateAuthDisplay() {
+        const authButtons = document.getElementById('authButtons');
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        
+        if (isLoggedIn()) {
+          if (authButtons) authButtons.style.display = 'none';
+          if (loginBtn) loginBtn.style.display = 'none';
+          if (registerBtn) registerBtn.style.display = 'none';
+          if (logoutBtn) logoutBtn.style.display = 'block';
+        } else {
+          if (authButtons) authButtons.style.display = 'flex';
+          if (loginBtn) loginBtn.style.display = 'block';
+          if (registerBtn) registerBtn.style.display = 'block';
+          if (logoutBtn) logoutBtn.style.display = 'none';
+        }
+      }
+
+      async function loadSupportLink() {
+        try {
+          const supportLink = document.getElementById('supportLink');
+          if (supportLink) {
+            supportLink.href = 'customer-support.html';
+            supportLink.style.display = 'inline-block';
+            supportLink.title = 'Customer Support';
+          }
+        } catch (error) {
+          console.error('Error loading support link:', error);
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        updateNavbar();
+        loadSupportLink();
+        updateAuthDisplay();
+        const user = getCurrentUser();
+        const loginPrompt = document.getElementById('loginPrompt');
+        const contentArea = document.getElementById('content-area');
+        
+        if (!user) {
+          if (loginPrompt) loginPrompt.style.display = 'block';
+          if (contentArea) contentArea.style.display = 'none';
+          return;
+        }
+        if (loginPrompt) loginPrompt.style.display = 'none';
+        if (contentArea) contentArea.style.display = 'block';
+        updateNavbar();
+        updateBalance();
+      });
+    </script>
+  </body>
+</html>
