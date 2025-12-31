@@ -1022,11 +1022,13 @@
           resultTitle.textContent = 'Trade Won!';
           resultAmount.textContent = '+' + profit.toFixed(2) + ' USDT';
           resultAmount.style.color = '#00d084';
+          resultAmount.classList.remove('result-loss');
         } else {
           resultBadge.textContent = '😢';
           resultTitle.textContent = 'Trade Loss';
           resultAmount.textContent = profit.toFixed(2) + ' USDT';
           resultAmount.style.color = '#ff6b6b';
+          resultAmount.classList.add('result-loss');
         }
         
         // 更新详细信息
@@ -1053,39 +1055,16 @@
         // 显示结果界面
         document.getElementById('countdownPhase').style.display = 'none';
         resultPhase.classList.add('show');
-      }          exitPrice = entryPrice * (0.98 + Math.random() * 0.02);
-        }
-
-        const profit = isWin ? orderData.potentialProfit : -amount * 0.1;
-        const profitRate = ((exitPrice - entryPrice) / entryPrice * 100).toFixed(2);
-
-        // 更新结果界面
-        document.getElementById('resultPhase').classList.add('show');
-        
-        if (isWin) {
-          document.getElementById('resultBadge').textContent = '🎉';
-          document.getElementById('resultTitle').textContent = 'Trade Win!';
-          document.getElementById('resultTitle').style.color = 'var(--success)';
-          document.getElementById('resultAmount').textContent = '+' + profit.toFixed(2) + ' USDT';
-          document.getElementById('resultAmount').classList.remove('result-loss');
-        } else {
-          document.getElementById('resultBadge').textContent = '😢';
-          document.getElementById('resultTitle').textContent = 'Trade Loss';
-          document.getElementById('resultTitle').style.color = 'var(--danger)';
-          document.getElementById('resultAmount').textContent = profit.toFixed(2) + ' USDT';
-          document.getElementById('resultAmount').classList.add('result-loss');
-        }
-
-        document.getElementById('resultDirection').textContent = direction === 'long' ? 'Buy Long ↑' : 'Buy Short ↓';
-        document.getElementById('resultEntryPrice').textContent = '$' + entryPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
-        document.getElementById('resultExitPrice').textContent = '$' + exitPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
-        document.getElementById('resultRate').textContent = (isWin ? '+' : '') + profitRate + '%';
       }
 
       function closeCountdownModal() {
         const modal = document.getElementById('countdownModal');
         modal.classList.remove('active');
         if (countdownInterval) clearInterval(countdownInterval);
+        
+        // 重置模态框状态供下一次使用
+        document.getElementById('countdownPhase').style.display = 'block';
+        document.getElementById('resultPhase').classList.remove('show');
       }
 
       function startQuickCountdown() {
