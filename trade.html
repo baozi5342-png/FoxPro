@@ -833,7 +833,7 @@
       // 加载秒合约配置
       async function loadQuickContractConfig() {
         try {
-          const response = await fetch('http://localhost:3000/api/quick-contract/config');
+          const response = await fetch(`${API_BASE}/quick-contract/config`);
           const result = await response.json();
           
           if (result.data && Array.isArray(result.data)) {
@@ -931,7 +931,7 @@
 
           console.log('Placing quick contract order:', { symbol, direction, seconds: selectedSeconds, amount });
 
-          const response = await fetch('http://localhost:3000/api/quick-contract/place', {
+          const response = await fetch(`${API_BASE}/quick-contract/place`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1140,7 +1140,7 @@
           }
 
           try {
-            const response = await fetch('http://localhost:3000/api/spot/place-order', {
+            const response = await fetch(`${API_BASE}/spot/place-order`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -1181,7 +1181,7 @@
           }
 
           try {
-            const response = await fetch('http://localhost:3000/api/perpetual/open-position', {
+            const response = await fetch(`${API_BASE}/perpetual/open-position`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -1241,7 +1241,7 @@
           const token = localStorage.getItem('token') || localStorage.getItem('userToken');
           if (!token) return;
 
-          const response = await fetch('http://localhost:3000/api/assets', {
+          const response = await fetch(`${API_BASE}/assets`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
 
@@ -1402,7 +1402,7 @@
       // 加载K线数据
       async function loadChartData(symbol) {
         try {
-          const response = await fetch(`http://localhost:3000/api/market-klines/${symbol}?timeframe=1m`);
+          const response = await fetch(`${API_BASE}/market-klines/${symbol}?timeframe=1m`);
           const result = await response.json();
           
           if (result.success && result.data) {
@@ -1481,7 +1481,7 @@
       async function updatePricesInRealtime() {
         const updateInterval = setInterval(async () => {
           try {
-            const response = await fetch('http://localhost:3000/api/prices');
+            const response = await fetch(`${API_BASE}/prices`);
             const result = await response.json();
             
             if (result.success && result.data) {

@@ -2,7 +2,12 @@
 // 公共认证函数 (Common Authentication Functions)
 // ============================================
 
-const API_BASE = 'http://localhost:3000/api';
+// 动态获取API基础URL
+const API_BASE = (() => {
+  const protocol = window.location.protocol;
+  const host = window.location.host;
+  return `${protocol}//${host}/api`;
+})();
 
 /**
  * 检查用户是否已登录

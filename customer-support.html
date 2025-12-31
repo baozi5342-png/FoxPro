@@ -319,7 +319,7 @@
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
 
-        const response = await fetch(`http://localhost:3000/api/support/messages/${currentUser.id}`, {
+        const response = await fetch(`${API_BASE}/support/messages/${currentUser.id}`, {
           signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -401,7 +401,7 @@
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
 
-        await fetch('http://localhost:3000/api/support/message', {
+        await fetch(`${API_BASE}/support/message`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

@@ -785,7 +785,7 @@
         }
 
         try {
-          const response = await fetch(`http://localhost:3000/api/account/verification/${type}`, {
+          const response = await fetch(`${API_BASE}/account/verification/${type}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -818,7 +818,7 @@
         }
 
         try {
-          const response = await fetch(`http://localhost:3000/api/account/change-password/${type}`, {
+          const response = await fetch(`${API_BASE}/account/change-password/${type}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -855,7 +855,7 @@
         if (!token) return;
 
         try {
-          const response = await fetch('http://localhost:3000/api/account/verification-status', {
+          const response = await fetch(`${API_BASE}/account/verification-status`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${token}`
