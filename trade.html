@@ -467,7 +467,7 @@
       </header>
 
       <!-- Login Prompt -->
-      <div id="loginPrompt" style="text-align: center; padding: 40px 20px; background: rgba(59, 130, 246, 0.08); border-radius: 12px; margin-bottom: 20px;">
+      <div id="loginPrompt" style="text-align: center; padding: 40px 20px; background: rgba(59, 130, 246, 0.08); border-radius: 12px; margin-bottom: 20px; display: block;">
         <h2 style="font-size: 20px; margin-bottom: 12px;">Sign in to start trading</h2>
         <p style="color: var(--muted); margin-bottom: 16px; font-size: 14px;">Access trading tools, manage orders, and execute trades securely</p>
         <div style="display: flex; gap: 12px;">
@@ -480,9 +480,8 @@
         <!-- Trade Mode Tabs -->
         <div class="trade-tabs">
           <button class="trade-tab active" data-mode="quick" onclick="switchTradeMode('quick', this)">Quick Contract</button>
-          <button class="trade-tab" data-mode="orders" onclick="switchTradeMode('orders', this)">My Orders</button>
           <button class="trade-tab" data-mode="spot" onclick="switchTradeMode('spot', this)">Spot Trading</button>
-          <button class="trade-tab" data-mode="perpetual" onclick="switchTradeMode('perpetual', this)">Perpetual Futures</button>
+          <button class="trade-tab" data-mode="perpetual" onclick="switchTradeMode('perpetual', this)">U-Futures</button>
         </div>
 
         <!-- Quick Contract Section -->
@@ -648,10 +647,10 @@
         </div>
         </div>
 
-        <!-- Perpetual Futures Section -->
+        <!-- U-Futures (U本位合约) Section -->
         <div class="trade-section" id="perpetual-section">
           <div class="trade-card">
-          <h3>Perpetual Futures Trading</h3>
+          <h3>U-Futures Trading</h3>
 
           <div class="form-group">
             <label>Select Pair</label>
@@ -730,25 +729,7 @@
             </div>
           </div>
         </div>
-        </div>          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <button class="btn success" style="flex: 1; background: #10b981; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-right: 6px;" onclick="placeOrder('long')">Open Long ↑</button>
-            <button class="btn danger" style="flex: 1; background: #ef4444; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600;" onclick="placeOrder('short')">Open Short ↓</button>
-          </div>
-
-          <div style="margin-top: 16px; padding: 12px; background: var(--panel-2); border-radius: 6px; font-size: 12px;">
-            <div style="display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 6px;">
-              <span>Available Margin:</span>
-              <span id="perpetualMargin">$0.00</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 6px;">
-              <span>Required Margin:</span>
-              <span id="requiredMargin">0.00 USDT</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; color: var(--text);">
-              <span>Est. Liquidation Price:</span>
-              <span id="liquidationPrice">-- USDT</span>
-            </div>
-          </div>
+        </div>
         </div>
         </div>
 
@@ -839,48 +820,6 @@
 
         <div class="countdown-actions">
           <button class="btn primary" id="closeResultBtn" onclick="closeCountdownModal()">Continue Trading</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- My Orders Section for Quick Contract -->
-    <div class="trade-section" id="orders-section">
-      <div class="trade-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-          <h3 style="margin: 0;">My Orders</h3>
-          <button class="btn ghost" onclick="refreshMyOrders()" style="color: var(--muted); font-size: 14px; padding: 4px 8px;">🔄 Refresh</button>
-        </div>
-
-        <div style="margin-bottom: 16px;">
-          <div style="display: flex; gap: 8px;">
-            <button class="contract-tab active" onclick="filterOrders('all')" style="flex: 1; padding: 8px 12px; font-size: 13px;">All Orders</button>
-            <button class="contract-tab" onclick="filterOrders('active')" style="flex: 1; padding: 8px 12px; font-size: 13px;">Open</button>
-            <button class="contract-tab" onclick="filterOrders('win')" style="flex: 1; padding: 8px 12px; font-size: 13px;">Wins</button>
-            <button class="contract-tab" onclick="filterOrders('loss')" style="flex: 1; padding: 8px 12px; font-size: 13px;">Losses</button>
-          </div>
-        </div>
-
-        <div id="myOrdersList" style="display: flex; flex-direction: column; gap: 8px;">
-          <div style="text-align: center; padding: 32px; color: var(--muted); font-size: 14px;">
-            No orders yet
-          </div>
-        </div>
-
-        <div style="margin-top: 16px; padding: 12px; background: var(--panel-2); border-radius: 6px; font-size: 12px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-            <div>
-              <div style="color: var(--muted); margin-bottom: 4px;">Total Orders</div>
-              <div style="font-weight: 700; font-size: 16px;" id="totalOrders">0</div>
-            </div>
-            <div>
-              <div style="color: var(--muted); margin-bottom: 4px;">Win Rate</div>
-              <div style="font-weight: 700; font-size: 16px; color: var(--success);" id="winRate">0%</div>
-            </div>
-            <div>
-              <div style="color: var(--muted); margin-bottom: 4px;">Total Profit</div>
-              <div style="font-weight: 700; font-size: 16px; color: var(--success);" id="totalProfit">+0 USDT</div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1354,6 +1293,21 @@
         }, 1000);
       }
 
+      // Check if user is logged in
+      function isLoggedIn() {
+        const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+        return !!token;
+      }
+
+      function getCurrentUser() {
+        const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+        const username = localStorage.getItem('username');
+        if (token) {
+          return { token, username: username || 'User' };
+        }
+        return null;
+      }
+
       document.addEventListener('DOMContentLoaded', () => {
         updateNavbar();
         loadSupportLink();
@@ -1423,123 +1377,8 @@
         }
       }
 
-      // ===== My Orders Functions =====
-      let allOrders = [];
-      let currentOrderFilter = 'all';
-
-      async function loadMyOrders() {
-        try {
-          const token = localStorage.getItem('token') || localStorage.getItem('userToken');
-          if (!token) {
-            console.log('Not logged in, cannot load orders');
-            return;
-          }
-
-          const response = await fetch('http://localhost:3000/api/quick-contract/orders', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-
-          const result = await response.json();
-          if (result.success && result.data) {
-            allOrders = result.data;
-            updateOrderStats(result.stats);
-            displayOrders(allOrders);
-          }
-        } catch (error) {
-          console.error('Error loading orders:', error);
-        }
-      }
-
-      function updateOrderStats(stats) {
-        if (!stats) return;
-        
-        document.getElementById('totalOrders').textContent = stats.totalOrders || 0;
-        document.getElementById('winRate').textContent = stats.winRate || '0%';
-        document.getElementById('totalProfit').textContent = '+' + (stats.totalProfit || '0') + ' USDT';
-      }
-
-      function displayOrders(orders) {
-        const container = document.getElementById('myOrdersList');
-        
-        if (!orders || orders.length === 0) {
-          container.innerHTML = '<div style="text-align: center; padding: 32px; color: var(--muted); font-size: 14px;">No orders yet</div>';
-          return;
-        }
-
-        let filtered = orders;
-        if (currentOrderFilter === 'active') {
-          filtered = orders.filter(o => o.status === 'pending');
-        } else if (currentOrderFilter === 'win') {
-          filtered = orders.filter(o => o.result === 'win');
-        } else if (currentOrderFilter === 'loss') {
-          filtered = orders.filter(o => o.result === 'loss');
-        }
-
-        container.innerHTML = filtered.map(order => {
-          const isWin = order.result === 'win';
-          const isPending = order.status === 'pending';
-          const profitColor = isWin ? 'var(--success)' : isPending ? 'var(--muted)' : 'var(--danger)';
-          const profitText = isPending ? 'Pending' : (isWin ? '+' : '-') + Math.abs(order.profit || 0) + ' USDT';
-
-          return `
-            <div style="padding: 12px; background: var(--panel-2); border-radius: 8px; border-left: 3px solid ${profitColor};">
-              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                <div>
-                  <div style="font-weight: 600; font-size: 14px;">${order.symbol}</div>
-                  <div style="font-size: 12px; color: var(--muted);">${new Date(order.createdAt).toLocaleString()}</div>
-                </div>
-                <div style="text-align: right;">
-                  <div style="font-weight: 700; font-size: 14px; color: ${profitColor};">${profitText}</div>
-                  <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">${order.direction.toUpperCase()}</div>
-                </div>
-              </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 11px;">
-                <div>
-                  <span style="color: var(--muted);">Entry: </span>
-                  <span style="color: var(--text);">$${order.entryPrice}</span>
-                </div>
-                <div>
-                  <span style="color: var(--muted);">Exit: </span>
-                  <span style="color: var(--text);">${order.exitPrice ? '$' + order.exitPrice : '-'}</span>
-                </div>
-                <div>
-                  <span style="color: var(--muted);">Amount: </span>
-                  <span style="color: var(--text);">${order.amount} USDT</span>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
-
-      function filterOrders(type) {
-        currentOrderFilter = type;
-        // Update active tab styling
-        document.querySelectorAll('#orders-section .contract-tab').forEach((btn, idx) => {
-          const types = ['all', 'active', 'win', 'loss'];
-          btn.classList.toggle('active', types[idx] === type);
-        });
-        displayOrders(allOrders);
-      }
-
-      function refreshMyOrders() {
-        loadMyOrders();
-      }
-
-      // Load orders when switching to orders section
-      const originalSwitchMode = window.switchTradeMode;
-      window.switchTradeMode = function(mode, btn) {
-        if (originalSwitchMode) {
-          originalSwitchMode.call(this, mode, btn);
-        }
-        if (mode === 'orders') {
-          loadMyOrders();
-        }
-      };
-
       // Initial load
       document.addEventListener('DOMContentLoaded', function() {
-        loadMyOrders();
         initializeCharts();
         updatePricesInRealtime();
       });
