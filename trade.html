@@ -1293,21 +1293,6 @@
         }, 1000);
       }
 
-      // Check if user is logged in
-      function isLoggedIn() {
-        const token = localStorage.getItem('token') || localStorage.getItem('userToken');
-        return !!token;
-      }
-
-      function getCurrentUser() {
-        const token = localStorage.getItem('token') || localStorage.getItem('userToken');
-        const username = localStorage.getItem('username');
-        if (token) {
-          return { token, username: username || 'User' };
-        }
-        return null;
-      }
-
       document.addEventListener('DOMContentLoaded', () => {
         updateNavbar();
         loadSupportLink();
