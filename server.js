@@ -5927,9 +5927,13 @@ app.post("/api/admin/content/:contentType", (req, res) => {
 // =====================
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', async () => {
   // 初始化实时价格
-  fetchRealPrices();
+  try {
+    await fetchRealPrices();
+  } catch (err) {
+    console.log('价格获取失败，使用缓存数据');
+  }
   
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`\nAPI endpoints:`);
