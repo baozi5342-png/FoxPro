@@ -178,8 +178,17 @@ app.get("/api/auth/verify", (req, res) => {
   res.json({ success: true, message: "Token valid", token: token });
 });
 
-// 静态文件服务
+// 静态文件服务 - 必须在最后，处理所有非 API 请求
 app.use(express.static(path.join(__dirname, "..")));
+
+// 处理所有其他 GET 请求（SPA 支持）
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "index.html"), (err) => {
+    if (err) {
+      res.status(404).json({ success: false, message: 'Not Found' });
+    }
+  });
+});
 
 // 404 处理
 app.use((req, res) => {
