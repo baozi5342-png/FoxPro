@@ -786,21 +786,39 @@
       });
 
       // 显示选中的section
-      document.getElementById(sectionId).classList.add('active');
-      event.target.classList.add('active');
+      const sectionEl = document.getElementById(sectionId);
+      if (sectionEl) {
+        sectionEl.classList.add('active');
+      } else {
+        console.error(`Section with id "${sectionId}" not found`);
+        return;
+      }
+
+      // 给点击的菜单项添加 active 类
+      // 找到对应的 sidebar-item
+      const sidebarItems = document.querySelectorAll('.sidebar-item');
+      for (let item of sidebarItems) {
+        if (item.getAttribute('onclick').includes(`switchSection('${sectionId}')`)) {
+          item.classList.add('active');
+          break;
+        }
+      }
 
       // 加载对应数据
       if (sectionId === 'users') loadUsers();
       if (sectionId === 'orders') loadOrders();
       if (sectionId === 'verification') loadVerifications();
       if (sectionId === 'pages') {
-        document.getElementById('pageEditor').style.display = 'none';
-        document.getElementById('previewContent').textContent = '选择页面以预览和编辑内容';
+        const pageEditor = document.getElementById('pageEditor');
+        const previewContent = document.getElementById('previewContent');
+        if (pageEditor) pageEditor.style.display = 'none';
+        if (previewContent) previewContent.textContent = '选择页面以预览和编辑内容';
       }
       if (sectionId === 'coins') loadCoins();
       if (sectionId === 'quick-contract') loadQuickContractOrders();
       if (sectionId === 'content') {
-        document.getElementById('contentEditor').style.display = 'none';
+        const contentEditor = document.getElementById('contentEditor');
+        if (contentEditor) contentEditor.style.display = 'none';
       }
     }
 
