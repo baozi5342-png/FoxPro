@@ -799,77 +799,58 @@
       }
     }
 
-    function switchSection(sectionId) {
-      try {
-        console.log('[switchSection] 开始切换到:', sectionId);
-        
-        // 1. 隐藏所有 section
-        const allSections = document.querySelectorAll('.section');
-        console.log('[switchSection] 找到', allSections.length, '个 section');
-        
-        for (let i = 0; i < allSections.length; i++) {
-          allSections[i].style.display = 'none';
-          allSections[i].classList.remove('active');
-        }
-        
-        // 2. 移除所有菜单项的 active 状态
-        const allItems = document.querySelectorAll('.sidebar-item');
-        for (let i = 0; i < allItems.length; i++) {
-          allItems[i].classList.remove('active');
-        }
-        
-        // 3. 显示选中的 section
-        const targetSection = document.getElementById(sectionId);
-        if (!targetSection) {
-          console.error('[switchSection] 错误: 找不到 id 为', sectionId, '的元素');
-          return;
-        }
-        
-        targetSection.style.display = 'block';
-        targetSection.classList.add('active');
-        console.log('[switchSection] 已显示 section:', sectionId);
-        
-        // 4. 高亮菜单项
-        for (let i = 0; i < allItems.length; i++) {
-          const onclick = allItems[i].getAttribute('onclick');
-          if (onclick && onclick.indexOf("switchSection('" + sectionId + "')") !== -1) {
-            allItems[i].classList.add('active');
-            console.log('[switchSection] 已高亮菜单项');
-            break;
-          }
-        }
-        
-        // 5. 加载数据
-        if (sectionId === 'users') {
-          console.log('[switchSection] 加载用户数据');
-          loadUsers();
-        } else if (sectionId === 'orders') {
-          console.log('[switchSection] 加载订单数据');
-          loadOrders();
-        } else if (sectionId === 'verification') {
-          console.log('[switchSection] 加载认证数据');
-          loadVerifications();
-        } else if (sectionId === 'pages') {
-          const pageEditor = document.getElementById('pageEditor');
-          const previewContent = document.getElementById('previewContent');
-          if (pageEditor) pageEditor.style.display = 'none';
-          if (previewContent) previewContent.textContent = '选择页面以预览和编辑内容';
-        } else if (sectionId === 'coins') {
-          console.log('[switchSection] 加载币种数据');
-          loadCoins();
-        } else if (sectionId === 'quick-contract') {
-          console.log('[switchSection] 加载秒合约数据');
-          loadQuickContractOrders();
-        } else if (sectionId === 'content') {
-          const contentEditor = document.getElementById('contentEditor');
-          if (contentEditor) contentEditor.style.display = 'none';
-        }
-        
-        console.log('[switchSection] 切换完成');
-      } catch (error) {
-        console.error('[switchSection] 发生错误:', error);
+    // 全局 switchSection 函数 - 必须是全局的才能被 onclick 调用
+    window.switchSection = function(sectionId) {
+      console.log('switchSection called with:', sectionId);
+      
+      // 隐藏所有 section
+      document.querySelectorAll('.section').forEach(section => {
+        section.style.display = 'none';
+        section.classList.remove('active');
+      });
+      
+      // 移除所有菜单项的 active 状态
+      document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      
+      // 显示选中的 section
+      const section = document.getElementById(sectionId);
+      if (section) {
+        section.style.display = 'block';
+        section.classList.add('active');
+        console.log('Section ' + sectionId + ' shown');
+      } else {
+        console.error('Section not found: ' + sectionId);
+        return;
       }
-    }
+      
+      // 高亮菜单项
+      document.querySelectorAll('.sidebar-item').forEach(item => {
+        const onclickAttr = item.getAttribute('onclick');
+        if (onclickAttr && onclickAttr.includes("switchSection('" + sectionId + "')")) {
+          item.classList.add('active');
+          console.log('Menu item highlighted');
+        }
+      });
+      
+      // 加载对应的数据
+      if (sectionId === 'users') loadUsers();
+      else if (sectionId === 'orders') loadOrders();
+      else if (sectionId === 'verification') loadVerifications();
+      else if (sectionId === 'pages') {
+        const pageEditor = document.getElementById('pageEditor');
+        const previewContent = document.getElementById('previewContent');
+        if (pageEditor) pageEditor.style.display = 'none';
+        if (previewContent) previewContent.textContent = '选择页面以预览和编辑内容';
+      }
+      else if (sectionId === 'coins') loadCoins();
+      else if (sectionId === 'quick-contract') loadQuickContractOrders();
+      else if (sectionId === 'content') {
+        const contentEditor = document.getElementById('contentEditor');
+        if (contentEditor) contentEditor.style.display = 'none';
+      }
+    };
 
     async function loadDashboard() {
       try {
