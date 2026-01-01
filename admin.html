@@ -769,6 +769,9 @@
 
       document.getElementById('adminUsername').textContent = adminUser.username || '管理员';
       
+      // 初始化页面
+      initializePageSections();
+      
       // 加载仪表板数据
       loadDashboard();
       loadUsers();
@@ -776,46 +779,91 @@
       loadVerifications();
     });
 
+    // 初始化所有 section，确保除了 dashboard 外都是 hidden
+    function initializePageSections() {
+      const allSections = document.querySelectorAll('.section');
+      allSections.forEach(section => {
+        if (section.id !== 'dashboard') {
+          section.classList.remove('active');
+          section.style.display = 'none';
+        } else {
+          section.classList.add('active');
+          section.style.display = 'block';
+        }
+      });
+      
+      // 设置仪表板菜单为 active
+      const dashboardItem = document.querySelector('[onclick="switchSection(\'dashboard\')"]');
+      if (dashboardItem) {
+        dashboardItem.classList.add('active');
+      }
+    }
+
     function switchSection(sectionId) {
+      console.log('切换到section:', sectionId);
+      
       // 隐藏所有section
-      document.querySelectorAll('.section').forEach(s => {
+      const allSections = document.querySelectorAll('.section');
+      allSections.forEach(s => {
+        s.style.display = 'none';
         s.classList.remove('active');
       });
-      document.querySelectorAll('.sidebar-item').forEach(item => {
+      
+      // 移除所有侧边栏项的 active 状态
+      const allItems = document.querySelectorAll('.sidebar-item');
+      allItems.forEach(item => {
         item.classList.remove('active');
       });
 
       // 显示选中的section
       const sectionEl = document.getElementById(sectionId);
-      if (sectionEl) {
-        sectionEl.classList.add('active');
-      } else {
-        console.error(`Section with id "${sectionId}" not found`);
+      if (!sectionEl) {
+        console.error(`未找到 section: ${sectionId}`);
         return;
       }
+      
+      sectionEl.style.display = 'block';
+      sectionEl.classList.add('active');
+      console.log('已显示section:', sectionId);
 
       // 给点击的菜单项添加 active 类
-      // 找到对应的 sidebar-item
-      const sidebarItems = document.querySelectorAll('.sidebar-item');
-      for (let item of sidebarItems) {
-        if (item.getAttribute('onclick').includes(`switchSection('${sectionId}')`)) {
+      // 通过遍历所有侧边栏项找到当前点击的
+      allItems.forEach(item => {
+        const onclick = item.getAttribute('onclick');
+        if (onclick && onclick.includes(`switchSection('${sectionId}')`)) {
           item.classList.add('active');
-          break;
+          console.log('已高亮菜单项');
         }
-      }
+      });
 
-      // 加载对应数据
-      if (sectionId === 'users') loadUsers();
-      if (sectionId === 'orders') loadOrders();
-      if (sectionId === 'verification') loadVerifications();
+      // 根据不同的section加载数据
+      console.log('准备加载数据...');
+      if (sectionId === 'users') {
+        console.log('加载用户数据');
+        loadUsers();
+      }
+      if (sectionId === 'orders') {
+        console.log('加载订单数据');
+        loadOrders();
+      }
+      if (sectionId === 'verification') {
+        console.log('加载认证数据');
+        loadVerifications();
+      }
       if (sectionId === 'pages') {
         const pageEditor = document.getElementById('pageEditor');
         const previewContent = document.getElementById('previewContent');
         if (pageEditor) pageEditor.style.display = 'none';
         if (previewContent) previewContent.textContent = '选择页面以预览和编辑内容';
       }
-      if (sectionId === 'coins') loadCoins();
-      if (sectionId === 'quick-contract') loadQuickContractOrders();
+      if (sectionId === 'coins') {
+        console.log('加载币种数据');
+        loadCoins();
+      }
+      if (sectionId === 'quick-contract') {
+        console.log('加载秒合约数据');
+        loadQuickContractOrders();
+      }
       if (sectionId === 'content') {
         const contentEditor = document.getElementById('contentEditor');
         if (contentEditor) contentEditor.style.display = 'none';
