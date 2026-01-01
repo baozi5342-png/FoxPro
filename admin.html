@@ -301,6 +301,9 @@
     <div class="admin-sidebar">
       <div class="sidebar-item active" onclick="switchSection('dashboard')">📊 仪表板</div>
       <div class="sidebar-item" onclick="switchSection('pages')">📄 页面管理</div>
+      <div class="sidebar-item" onclick="switchSection('content')">✍️ 内容管理</div>
+      <div class="sidebar-item" onclick="switchSection('coins')">💰 币种管理</div>
+      <div class="sidebar-item" onclick="switchSection('quick-contract')">⚡ 秒合约管理</div>
       <div class="sidebar-item" onclick="switchSection('users')">👥 用户管理</div>
       <div class="sidebar-item" onclick="switchSection('orders')">📦 订单管理</div>
       <div class="sidebar-item" onclick="switchSection('verification')">✅ 身份验证</div>
@@ -423,21 +426,269 @@
         </div>
       </div>
 
+      <!-- 内容管理 -->
+      <div id="content" class="section">
+        <div class="section-title">内容管理</div>
+        <div id="messageContent"></div>
+        
+        <div style="margin-bottom: 24px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn btn-primary" onclick="selectContent('about')" id="btnAboutContent">关于我们</button>
+          <button class="btn" onclick="selectContent('terms')" id="btnTermsContent">服务条款</button>
+          <button class="btn" onclick="selectContent('whitepaper')" id="btnWhitepaper">白皮书</button>
+        </div>
+
+        <div id="contentEditor" style="display: none; border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+          <h3 style="margin-bottom: 16px;" id="contentTitle">编辑内容</h3>
+          
+          <div class="form-group">
+            <label>内容标题</label>
+            <input type="text" id="contentHeading" placeholder="输入标题">
+          </div>
+
+          <div class="form-group">
+            <label>内容正文</label>
+            <textarea id="contentBody" placeholder="输入内容" style="min-height: 200px;"></textarea>
+          </div>
+
+          <div style="display: flex; gap: 12px;">
+            <button class="btn btn-primary" onclick="saveContent()">保存内容</button>
+            <button class="btn" onclick="resetContentForm()" style="background: var(--panel-2); color: var(--text);">重置</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 币种管理 -->
+      <div id="coins" class="section">
+        <div class="section-title">币种管理</div>
+        <div id="messageCoins"></div>
+        
+        <div style="margin-bottom: 24px; display: flex; gap: 12px;">
+          <button class="btn btn-primary" onclick="showCoinForm()">➕ 新增币种</button>
+        </div>
+
+        <!-- 新增币种表单 -->
+        <div id="coinFormContainer" style="display: none; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; background: var(--panel-2);">
+          <h3 style="margin-bottom: 16px;">新增/编辑币种</h3>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="form-group">
+              <label>币种名称</label>
+              <input type="text" id="coinSymbol" placeholder="如: BTC, ETH">
+            </div>
+            <div class="form-group">
+              <label>币种全名</label>
+              <input type="text" id="coinName" placeholder="如: Bitcoin">
+            </div>
+            <div class="form-group">
+              <label>现价格 (USD)</label>
+              <input type="number" id="coinPrice" placeholder="输入价格" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+              <label>24小时涨幅 (%)</label>
+              <input type="number" id="coinChange24h" placeholder="输入涨幅" step="0.01">
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 16px;">
+            <button class="btn btn-primary" onclick="saveCoin()">保存币种</button>
+            <button class="btn" onclick="closeCoinForm()" style="background: var(--panel-2); color: var(--text);">取消</button>
+          </div>
+        </div>
+
+        <!-- 币种列表 -->
+        <table class="table">
+          <thead>
+            <tr>
+              <th>币种名称</th>
+              <th>币种全名</th>
+              <th>现价格</th>
+              <th>24小时涨幅</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="coinsTableBody">
+            <tr><td colspan="5" style="text-align: center;">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 秒合约管理 -->
+      <div id="quick-contract" class="section">
+        <div class="section-title">秒合约管理</div>
+        <div id="messageQuickContract"></div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+          <!-- 秒合约配置 -->
+          <div style="border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+            <h3 style="margin-bottom: 16px;">秒合约配置</h3>
+            
+            <div class="form-group">
+              <label>合约周期 (秒)</label>
+              <input type="text" id="contractPeriods" placeholder="如: 30,60,120,180" value="30,60,120,180">
+            </div>
+
+            <div class="form-group">
+              <label>30秒收益率 (%)</label>
+              <input type="number" id="rate30s" placeholder="输入收益率" step="0.1" value="1.5">
+            </div>
+
+            <div class="form-group">
+              <label>60秒收益率 (%)</label>
+              <input type="number" id="rate60s" placeholder="输入收益率" step="0.1" value="3">
+            </div>
+
+            <div class="form-group">
+              <label>120秒收益率 (%)</label>
+              <input type="number" id="rate120s" placeholder="输入收益率" step="0.1" value="5">
+            </div>
+
+            <div class="form-group">
+              <label>180秒收益率 (%)</label>
+              <input type="number" id="rate180s" placeholder="输入收益率" step="0.1" value="8">
+            </div>
+
+            <button class="btn btn-primary" onclick="saveContractConfig()" style="width: 100%;">保存配置</button>
+          </div>
+
+          <!-- 币种配置 -->
+          <div style="border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+            <h3 style="margin-bottom: 16px;">合约币种配置</h3>
+            
+            <div class="form-group">
+              <label>选择币种</label>
+              <select id="contractCoinSelect">
+                <option value="">-- 选择币种 --</option>
+                <option value="BTC">BTC - Bitcoin</option>
+                <option value="ETH">ETH - Ethereum</option>
+                <option value="SOL">SOL - Solana</option>
+                <option value="BNB">BNB - Binance Coin</option>
+                <option value="XRP">XRP - Ripple</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>初始余额 (USDT)</label>
+              <input type="number" id="initialBalance" placeholder="用户初始余额" step="1" value="10000">
+            </div>
+
+            <div class="form-group">
+              <label>最小投注额 (USDT)</label>
+              <input type="number" id="minBet" placeholder="最小投注额" step="1" value="10">
+            </div>
+
+            <div class="form-group">
+              <label>最大投注额 (USDT)</label>
+              <input type="number" id="maxBet" placeholder="最大投注额" step="1" value="50000">
+            </div>
+
+            <button class="btn btn-primary" onclick="saveContractCoinConfig()" style="width: 100%;">保存币种配置</button>
+          </div>
+        </div>
+
+        <!-- 秒合约订单管理 -->
+        <h3 style="margin-bottom: 16px;">订单管理</h3>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>订单ID</th>
+              <th>用户名</th>
+              <th>币种</th>
+              <th>投注金额</th>
+              <th>方向</th>
+              <th>周期</th>
+              <th>结果</th>
+              <th>创建时间</th>
+            </tr>
+          </thead>
+          <tbody id="quickContractOrdersBody">
+            <tr><td colspan="8" style="text-align: center;">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
       <!-- 用户管理 -->
       <div id="users" class="section">
         <div class="section-title">用户管理</div>
+        <div id="messageUsers"></div>
+        
+        <!-- 用户详情模态框 -->
+        <div id="userDetailModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; justify-content: center; align-items: center;">
+          <div style="background: var(--panel); padding: 24px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h2 id="userDetailTitle" style="margin-bottom: 20px;">用户详情</h2>
+            
+            <div class="form-group">
+              <label>用户ID</label>
+              <input type="text" id="userDetailId" disabled style="background: var(--panel-2);">
+            </div>
+            
+            <div class="form-group">
+              <label>用户名</label>
+              <input type="text" id="userDetailUsername" disabled style="background: var(--panel-2);">
+            </div>
+            
+            <div class="form-group">
+              <label>邮箱</label>
+              <input type="text" id="userDetailEmail" disabled style="background: var(--panel-2);">
+            </div>
+            
+            <div class="form-group">
+              <label>当前余额 (USDT)</label>
+              <input type="text" id="userDetailBalance" disabled style="background: var(--panel-2);">
+            </div>
+
+            <div style="border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px;">
+              <h3 style="margin-bottom: 16px;">资金操作</h3>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div class="form-group">
+                  <label>增加资金 (USDT)</label>
+                  <input type="number" id="addAmount" placeholder="输入金额" min="0" step="0.01">
+                </div>
+                <button class="btn btn-primary" onclick="addUserBalance()" style="align-self: flex-end;">充值</button>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div class="form-group">
+                  <label>扣去资金 (USDT)</label>
+                  <input type="number" id="deductAmount" placeholder="输入金额" min="0" step="0.01">
+                </div>
+                <button class="btn btn-danger" onclick="deductUserBalance()" style="align-self: flex-end;">扣款</button>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div class="form-group">
+                  <label>设置赢赔</label>
+                  <select id="winSetting">
+                    <option value="normal">正常</option>
+                    <option value="always-win">总是赢</option>
+                    <option value="always-lose">总是输</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" onclick="setUserWinSetting()" style="align-self: flex-end;">设置</button>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+              <button class="btn btn-primary" onclick="closeUserModal()" style="flex: 1;">关闭</button>
+              <button class="btn btn-danger" onclick="deleteUser()" style="flex: 1;">删除用户</button>
+            </div>
+          </div>
+        </div>
+
         <table class="table">
           <thead>
             <tr>
               <th>用户名</th>
               <th>邮箱</th>
               <th>电话</th>
+              <th>余额</th>
+              <th>赢赔状态</th>
               <th>状态</th>
               <th>注册时间</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody id="usersTableBody">
-            <tr><td colspan="5" style="text-align: center;">加载中...</td></tr>
+            <tr><td colspan="8" style="text-align: center;">加载中...</td></tr>
           </tbody>
         </table>
       </div>
@@ -503,6 +754,9 @@
 
   <script src="auth.js"></script>
   <script>
+    // API 基础 URL
+    const API_BASE = 'http://localhost:3000';
+
     // 检查管理员权限
     window.addEventListener('load', () => {
       const adminToken = localStorage.getItem('adminToken');
@@ -543,6 +797,11 @@
         document.getElementById('pageEditor').style.display = 'none';
         document.getElementById('previewContent').textContent = '选择页面以预览和编辑内容';
       }
+      if (sectionId === 'coins') loadCoins();
+      if (sectionId === 'quick-contract') loadQuickContractOrders();
+      if (sectionId === 'content') {
+        document.getElementById('contentEditor').style.display = 'none';
+      }
     }
 
     async function loadDashboard() {
@@ -564,6 +823,9 @@
       }
     }
 
+    // 当前选中的用户ID
+    let currentSelectedUserId = null;
+
     async function loadUsers() {
       try {
         const token = localStorage.getItem('adminToken');
@@ -574,19 +836,196 @@
         
         if (data.success && data.data) {
           const tbody = document.getElementById('usersTableBody');
-          tbody.innerHTML = data.data.map(user => `
-            <tr>
-              <td>${user.username}</td>
-              <td>${user.email || '-'}</td>
-              <td>${user.phone || '-'}</td>
-              <td><span style="color: var(--success);">活跃</span></td>
-              <td>${new Date(user.createdAt).toLocaleDateString('zh-CN')}</td>
-            </tr>
-          `).join('');
+          tbody.innerHTML = data.data.map(user => {
+            const winStatus = user.winSetting || 'normal';
+            const winStatusDisplay = {
+              'normal': '<span style="color: var(--muted);">正常</span>',
+              'always-win': '<span style="color: var(--success);">总是赢</span>',
+              'always-lose': '<span style="color: var(--danger);">总是输</span>'
+            }[winStatus] || '正常';
+            
+            return `
+              <tr>
+                <td>${user.username}</td>
+                <td>${user.email || '-'}</td>
+                <td>${user.phone || '-'}</td>
+                <td>${user.balance ? user.balance.toFixed(2) : '0.00'} USDT</td>
+                <td>${winStatusDisplay}</td>
+                <td><span style="color: var(--success);">活跃</span></td>
+                <td>${new Date(user.createdAt).toLocaleDateString('zh-CN')}</td>
+                <td>
+                  <button class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;" onclick="openUserDetail('${user.id}', '${user.username}', '${user.email || ''}', '${user.balance || 0}')">
+                    管理
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('');
         }
       } catch (error) {
         console.error('Error loading users:', error);
       }
+    }
+
+    function openUserDetail(userId, username, email, balance) {
+      currentSelectedUserId = userId;
+      document.getElementById('userDetailId').value = userId;
+      document.getElementById('userDetailUsername').value = username;
+      document.getElementById('userDetailEmail').value = email;
+      document.getElementById('userDetailBalance').value = parseFloat(balance).toFixed(2);
+      document.getElementById('userDetailModal').style.display = 'flex';
+      document.getElementById('addAmount').value = '';
+      document.getElementById('deductAmount').value = '';
+      document.getElementById('winSetting').value = 'normal';
+    }
+
+    function closeUserModal() {
+      document.getElementById('userDetailModal').style.display = 'none';
+      currentSelectedUserId = null;
+    }
+
+    async function addUserBalance() {
+      if (!currentSelectedUserId) return;
+      
+      const amount = parseFloat(document.getElementById('addAmount').value);
+      if (isNaN(amount) || amount <= 0) {
+        showMessageUsers('请输入有效的金额', 'error');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE}/admin/users/${currentSelectedUserId}/balance`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            amount: amount,
+            type: 'add'
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessageUsers(`已为用户增加 ${amount} USDT`, 'success');
+          document.getElementById('userDetailBalance').value = data.data.balance.toFixed(2);
+          document.getElementById('addAmount').value = '';
+          loadUsers(); // 刷新用户列表
+        } else {
+          showMessageUsers(data.message || '操作失败', 'error');
+        }
+      } catch (error) {
+        showMessageUsers('操作出错: ' + error.message, 'error');
+      }
+    }
+
+    async function deductUserBalance() {
+      if (!currentSelectedUserId) return;
+      
+      const amount = parseFloat(document.getElementById('deductAmount').value);
+      if (isNaN(amount) || amount <= 0) {
+        showMessageUsers('请输入有效的金额', 'error');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE}/admin/users/${currentSelectedUserId}/balance`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            amount: amount,
+            type: 'deduct'
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessageUsers(`已从用户扣除 ${amount} USDT`, 'success');
+          document.getElementById('userDetailBalance').value = data.data.balance.toFixed(2);
+          document.getElementById('deductAmount').value = '';
+          loadUsers(); // 刷新用户列表
+        } else {
+          showMessageUsers(data.message || '操作失败', 'error');
+        }
+      } catch (error) {
+        showMessageUsers('操作出错: ' + error.message, 'error');
+      }
+    }
+
+    async function setUserWinSetting() {
+      if (!currentSelectedUserId) return;
+      
+      const setting = document.getElementById('winSetting').value;
+
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE}/admin/users/${currentSelectedUserId}/win-setting`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            winSetting: setting
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          const settingNames = {
+            'normal': '正常',
+            'always-win': '总是赢',
+            'always-lose': '总是输'
+          };
+          showMessageUsers(`已设置赢赔状态为: ${settingNames[setting]}`, 'success');
+          loadUsers(); // 刷新用户列表
+        } else {
+          showMessageUsers(data.message || '操作失败', 'error');
+        }
+      } catch (error) {
+        showMessageUsers('操作出错: ' + error.message, 'error');
+      }
+    }
+
+    async function deleteUser() {
+      if (!currentSelectedUserId) return;
+      
+      if (!confirm('确定要删除这个用户吗？此操作不可撤销。')) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE}/admin/users/${currentSelectedUserId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessageUsers('用户已删除', 'success');
+          closeUserModal();
+          loadUsers(); // 刷新用户列表
+        } else {
+          showMessageUsers(data.message || '删除失败', 'error');
+        }
+      } catch (error) {
+        showMessageUsers('删除出错: ' + error.message, 'error');
+      }
+    }
+
+    function showMessageUsers(msg, type) {
+      const messageEl = document.getElementById('messageUsers');
+      messageEl.innerHTML = `<div class="message ${type}">${msg}</div>`;
+      setTimeout(() => {
+        messageEl.innerHTML = '';
+      }, 3000);
     }
 
     async function loadOrders() {
@@ -842,6 +1281,298 @@
       setTimeout(() => {
         messageEl.innerHTML = '';
       }, 3000);
+    }
+
+    // ============ 内容管理功能 ============
+    let currentContentType = null;
+
+    function selectContent(type) {
+      currentContentType = type;
+      document.getElementById('contentEditor').style.display = 'block';
+      
+      const titles = {
+        'about': '关于我们',
+        'terms': '服务条款',
+        'whitepaper': '白皮书'
+      };
+      
+      document.getElementById('contentTitle').textContent = `编辑 - ${titles[type]}`;
+      document.getElementById('contentHeading').value = '';
+      document.getElementById('contentBody').value = '';
+      
+      // 更新按钮状态
+      const buttonIds = {
+        'about': 'btnAboutContent',
+        'terms': 'btnTermsContent',
+        'whitepaper': 'btnWhitepaper'
+      };
+      
+      document.querySelectorAll('#content .btn').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.style.background = 'var(--panel-2)';
+      });
+      
+      const btnEl = document.getElementById(buttonIds[type]);
+      if (btnEl) {
+        btnEl.classList.add('btn-primary');
+        btnEl.style.background = 'var(--primary)';
+      }
+    }
+
+    function resetContentForm() {
+      document.getElementById('contentHeading').value = '';
+      document.getElementById('contentBody').value = '';
+    }
+
+    async function saveContent() {
+      if (!currentContentType) return;
+      
+      const token = localStorage.getItem('adminToken');
+      const heading = document.getElementById('contentHeading').value;
+      const body = document.getElementById('contentBody').value;
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/content/${currentContentType}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ heading, body })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessageContent('内容已保存！', 'success');
+        } else {
+          showMessageContent(data.message || '保存失败', 'error');
+        }
+      } catch (error) {
+        showMessageContent('保存出错: ' + error.message, 'error');
+      }
+    }
+
+    function showMessageContent(msg, type) {
+      const messageEl = document.getElementById('messageContent');
+      messageEl.innerHTML = `<div class="message ${type}">${msg}</div>`;
+      setTimeout(() => { messageEl.innerHTML = ''; }, 3000);
+    }
+
+    // ============ 币种管理功能 ============
+    function showCoinForm() {
+      document.getElementById('coinFormContainer').style.display = 'block';
+      document.getElementById('coinSymbol').value = '';
+      document.getElementById('coinName').value = '';
+      document.getElementById('coinPrice').value = '';
+      document.getElementById('coinChange24h').value = '';
+    }
+
+    function closeCoinForm() {
+      document.getElementById('coinFormContainer').style.display = 'none';
+    }
+
+    async function loadCoins() {
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE}/admin/coins`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          const tbody = document.getElementById('coinsTableBody');
+          tbody.innerHTML = data.data.map(coin => `
+            <tr>
+              <td><strong>${coin.symbol}</strong></td>
+              <td>${coin.name}</td>
+              <td>$${coin.price.toFixed(2)}</td>
+              <td><span style="color: ${coin.change24h >= 0 ? 'var(--success)' : 'var(--danger)'};">${coin.change24h >= 0 ? '+' : ''}${coin.change24h.toFixed(2)}%</span></td>
+              <td>
+                <button class="btn btn-primary" style="font-size: 12px; padding: 6px 12px; margin-right: 6px;" onclick="editCoin('${coin.id}')">编辑</button>
+                <button class="btn btn-danger" style="font-size: 12px; padding: 6px 12px;" onclick="deleteCoin('${coin.id}')">删除</button>
+              </td>
+            </tr>
+          `).join('');
+        } else {
+          document.getElementById('coinsTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted);">暂无币种</td></tr>';
+        }
+      } catch (error) {
+        console.error('Error loading coins:', error);
+      }
+    }
+
+    async function saveCoin() {
+      const symbol = document.getElementById('coinSymbol').value;
+      const name = document.getElementById('coinName').value;
+      const price = parseFloat(document.getElementById('coinPrice').value);
+      const change24h = parseFloat(document.getElementById('coinChange24h').value);
+
+      if (!symbol || !name || isNaN(price)) {
+        showMessageCoins('请填写所有字段', 'error');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE}/admin/coins`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ symbol, name, price, change24h })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessageCoins('币种已保存！', 'success');
+          closeCoinForm();
+          loadCoins();
+        } else {
+          showMessageCoins(data.message || '保存失败', 'error');
+        }
+      } catch (error) {
+        showMessageCoins('保存出错: ' + error.message, 'error');
+      }
+    }
+
+    function editCoin(coinId) {
+      // TODO: 实现编辑币种功能
+      alert('编辑功能开发中');
+    }
+
+    async function deleteCoin(coinId) {
+      if (!confirm('确定要删除这个币种吗？')) return;
+
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE}/admin/coins/${coinId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessageCoins('币种已删除！', 'success');
+          loadCoins();
+        } else {
+          showMessageCoins(data.message || '删除失败', 'error');
+        }
+      } catch (error) {
+        showMessageCoins('删除出错: ' + error.message, 'error');
+      }
+    }
+
+    function showMessageCoins(msg, type) {
+      const messageEl = document.getElementById('messageCoins');
+      messageEl.innerHTML = `<div class="message ${type}">${msg}</div>`;
+      setTimeout(() => { messageEl.innerHTML = ''; }, 3000);
+    }
+
+    // ============ 秒合约管理功能 ============
+    async function saveContractConfig() {
+      const periods = document.getElementById('contractPeriods').value;
+      const rates = {
+        '30': parseFloat(document.getElementById('rate30s').value),
+        '60': parseFloat(document.getElementById('rate60s').value),
+        '120': parseFloat(document.getElementById('rate120s').value),
+        '180': parseFloat(document.getElementById('rate180s').value)
+      };
+
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE}/admin/quick-contract/config`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ periods, rates })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessageQuickContract('秒合约配置已保存！', 'success');
+        } else {
+          showMessageQuickContract(data.message || '保存失败', 'error');
+        }
+      } catch (error) {
+        showMessageQuickContract('保存出错: ' + error.message, 'error');
+      }
+    }
+
+    async function saveContractCoinConfig() {
+      const coin = document.getElementById('contractCoinSelect').value;
+      const initialBalance = parseFloat(document.getElementById('initialBalance').value);
+      const minBet = parseFloat(document.getElementById('minBet').value);
+      const maxBet = parseFloat(document.getElementById('maxBet').value);
+
+      if (!coin || isNaN(initialBalance) || isNaN(minBet) || isNaN(maxBet)) {
+        showMessageQuickContract('请填写所有字段', 'error');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE}/admin/quick-contract/coin-config`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ coin, initialBalance, minBet, maxBet })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessageQuickContract('币种配置已保存！', 'success');
+        } else {
+          showMessageQuickContract(data.message || '保存失败', 'error');
+        }
+      } catch (error) {
+        showMessageQuickContract('保存出错: ' + error.message, 'error');
+      }
+    }
+
+    async function loadQuickContractOrders() {
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE}/admin/quick-contract/orders`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          const tbody = document.getElementById('quickContractOrdersBody');
+          tbody.innerHTML = data.data.slice(0, 20).map(order => {
+            const resultColor = order.result === 'win' ? 'var(--success)' : 'var(--danger)';
+            const resultText = order.result === 'win' ? '赢' : '输';
+            
+            return `
+              <tr>
+                <td>${order.id}</td>
+                <td>${order.username}</td>
+                <td>${order.symbol}</td>
+                <td>${order.amount} USDT</td>
+                <td>${order.direction === 'up' ? '📈 上涨' : '📉 下跌'}</td>
+                <td>${order.period}秒</td>
+                <td><span style="color: ${resultColor};">${resultText}</span></td>
+                <td>${new Date(order.createdAt).toLocaleDateString('zh-CN')}</td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          document.getElementById('quickContractOrdersBody').innerHTML = '<tr><td colspan="8" style="text-align: center;">暂无订单</td></tr>';
+        }
+      } catch (error) {
+        console.error('Error loading orders:', error);
+      }
+    }
+
+    function showMessageQuickContract(msg, type) {
+      const messageEl = document.getElementById('messageQuickContract');
+      messageEl.innerHTML = `<div class="message ${type}">${msg}</div>`;
+      setTimeout(() => { messageEl.innerHTML = ''; }, 3000);
     }
 
     function logout() {

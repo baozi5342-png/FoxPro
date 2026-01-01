@@ -2,7 +2,11 @@ const express = require("express");
 const cors = require("cors");
 const Database = require("better-sqlite3");
 const path = require("path");
+const jwt = require("jsonwebtoken");
 const app = express();
+
+// JWT密钥
+const JWT_SECRET = process.env.JWT_SECRET || "foxpro-secret-key-2026";
 
 app.use(cors());
 app.use(express.json());
@@ -5618,6 +5622,287 @@ const startWealthAutoSettlement = () => {
 
 // 启动自动结算
 startWealthAutoSettlement();
+
+// =====================
+// 币种管理 API
+// =====================
+
+/**
+ * GET /api/admin/coins - 获取所有币种
+ */
+app.get("/api/admin/coins", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    // 初始化表
+    try {
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS market_coins (
+          id TEXT PRIMARY KEY,
+          symbol TEXT UNIQUE,
+          name TEXT,
+          price REAL,
+          change24h REAL DEFAULT 0,
+          marketCap REAL,
+          volume24h REAL,
+          status TEXT DEFAULT 'active',
+          createdAt DATETIME,
+          updatedAt DATETIME
+        )
+      `).run();
+    } catch (e) {}
+
+    const coins = db.prepare("SELECT * FROM market_coins WHERE status = 'active' ORDER BY updatedAt DESC").all();
+    
+    res.json({
+      success: true,
+      data: coins || []
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/coins - 添加新币种
+ */
+app.post("/api/admin/coins", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const { symbol, name, price, change24h } = req.body;
+
+    if (!symbol || !name || typeof price !== 'number') {
+      return res.status(400).json({ success: false, message: "参数不完整" });
+    }
+
+    // 初始化表
+    try {
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS market_coins (
+          id TEXT PRIMARY KEY,
+          symbol TEXT UNIQUE,
+          name TEXT,
+          price REAL,
+          change24h REAL DEFAULT 0,
+          marketCap REAL,
+          volume24h REAL,
+          status TEXT DEFAULT 'active',
+          createdAt DATETIME,
+          updatedAt DATETIME
+        )
+      `).run();
+    } catch (e) {}
+
+    const id = Date.now().toString();
+    const now = new Date().toISOString();
+
+    try {
+      db.prepare(`
+        INSERT INTO market_coins (id, symbol, name, price, change24h, status, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, 'active', ?, ?)
+      `).run(id, symbol.toUpperCase(), name, price, change24h || 0, now, now);
+
+      res.json({
+        success: true,
+        message: "币种已添加",
+        data: { id, symbol: symbol.toUpperCase(), name, price, change24h }
+      });
+    } catch (error) {
+      if (error.message.includes('UNIQUE constraint')) {
+        return res.status(400).json({ success: false, message: "币种已存在" });
+      }
+      throw error;
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/coins/:coinId - 删除币种
+ */
+app.delete("/api/admin/coins/:coinId", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const { coinId } = req.params;
+
+    db.prepare("UPDATE market_coins SET status = 'inactive', updatedAt = ? WHERE id = ?")
+      .run(new Date().toISOString(), coinId);
+
+    res.json({ success: true, message: "币种已删除" });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/quick-contract/coin-config - 配置秒合约币种
+ */
+app.post("/api/admin/quick-contract/coin-config", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const { coin, initialBalance, minBet, maxBet } = req.body;
+
+    if (!coin || !initialBalance || !minBet || !maxBet) {
+      return res.status(400).json({ success: false, message: "参数不完整" });
+    }
+
+    // 初始化表
+    try {
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS quick_contract_config (
+          id INTEGER PRIMARY KEY,
+          symbol TEXT UNIQUE,
+          initialBalance REAL,
+          minBet REAL,
+          maxBet REAL,
+          updatedAt DATETIME
+        )
+      `).run();
+    } catch (e) {}
+
+    const now = new Date().toISOString();
+
+    try {
+      db.prepare(`
+        INSERT OR REPLACE INTO quick_contract_config (symbol, initialBalance, minBet, maxBet, updatedAt)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(coin, initialBalance, minBet, maxBet, now);
+
+      res.json({
+        success: true,
+        message: "币种配置已保存"
+      });
+    } catch (error) {
+      throw error;
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/content/:contentType - 获取页面内容
+ */
+app.get("/api/admin/content/:contentType", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const { contentType } = req.params;
+
+    // 初始化表
+    try {
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS site_pages (
+          id INTEGER PRIMARY KEY,
+          pageType TEXT UNIQUE,
+          heading TEXT,
+          body TEXT,
+          updatedAt DATETIME
+        )
+      `).run();
+    } catch (e) {}
+
+    const content = db.prepare("SELECT * FROM site_pages WHERE pageType = ?").get(contentType);
+
+    res.json({
+      success: true,
+      data: content || { pageType: contentType, heading: '', body: '' }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/content/:contentType - 保存页面内容
+ */
+app.post("/api/admin/content/:contentType", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未授权" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ success: false, message: "没有权限" });
+    }
+
+    const { contentType } = req.params;
+    const { heading, body } = req.body;
+
+    // 初始化表
+    try {
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS site_pages (
+          id INTEGER PRIMARY KEY,
+          pageType TEXT UNIQUE,
+          heading TEXT,
+          body TEXT,
+          updatedAt DATETIME
+        )
+      `).run();
+    } catch (e) {}
+
+    const now = new Date().toISOString();
+
+    db.prepare(`
+      INSERT OR REPLACE INTO site_pages (pageType, heading, body, updatedAt)
+      VALUES (?, ?, ?, ?)
+    `).run(contentType, heading, body, now);
+
+    res.json({
+      success: true,
+      message: "内容已保存"
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // =====================
 // 启动服务器
