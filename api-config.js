@@ -8,11 +8,14 @@ const API_CONFIG = {
   '127.0.0.1:3000': 'http://localhost:3000/api',
   '127.0.0.1': 'http://localhost:3000/api',
   
+  // Vercel 部署
+  'foxpro.vercel.app': 'https://foxpro.vercel.app/api',
+  
   // 生产环境
-  'foxprocs.top': 'https://api.foxprocs.top/api',
-  'www.foxprocs.top': 'https://api.foxprocs.top/api',
-  'foxpro.top': 'https://api.foxpro.top/api',
-  'www.foxpro.top': 'https://api.foxpro.top/api',
+  'foxprocs.top': 'https://foxprocs.top/api',
+  'www.foxprocs.top': 'https://foxprocs.top/api',
+  'foxpro.top': 'https://foxpro.top/api',
+  'www.foxpro.top': 'https://foxpro.top/api',
 };
 
 // 获取 API 基础 URL
