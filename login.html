@@ -243,6 +243,7 @@
   </style>
 </head>
 <body style="background: var(--bg);">
+  <script src="api-config.js"></script>
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
@@ -292,11 +293,7 @@
   </div>
 
   <script>
-    const API_BASE = (() => {
-      const protocol = window.location.protocol;
-      const host = window.location.host;
-      return `${protocol}//${host}/api`;
-    })();
+    // API_BASE 已由 api-config.js 定义
 
     // 显示消息提示
     function showMessage(message, type = 'error') {
@@ -329,23 +326,30 @@
       const password = document.getElementById('password').value.trim();
       const rememberMe = document.getElementById('rememberMe').checked;
       const loginBtn = document.getElementById('loginBtn');
+      const errorMsg = document.getElementById('errorMsg');
 
       // 验证输入
       if (!username) {
-        showMessage('Please enter username', 'error');
+        errorMsg.textContent = 'Please enter username';
+        errorMsg.classList.add('show');
         return;
       }
 
       if (!password) {
-        showMessage('Please enter password', 'error');
+        errorMsg.textContent = 'Please enter password';
+        errorMsg.classList.add('show');
         return;
       }
 
       // 禁用按钮，显示加载状态
       loginBtn.disabled = true;
       loginBtn.textContent = 'Signing in...';
+      errorMsg.classList.remove('show');
 
       try {
+        console.log('[Login] Starting login request for:', username);
+        console.log('[Login] API URL:', `${API_BASE}/auth/login`);
+        
         const response = await fetch(`${API_BASE}/auth/login`, {
           method: 'POST',
           headers: {
@@ -354,10 +358,14 @@
           body: JSON.stringify({ username, password })
         });
 
+        console.log('[Login] Response status:', response.status);
+        
         const data = await response.json();
+        console.log('[Login] Response data:', data);
 
         if (!response.ok) {
-          showMessage(data.message || 'Login failed. Please check username and password', 'error');
+          errorMsg.textContent = data.message || 'Login failed. Please check username and password';
+          errorMsg.classList.add('show');
           loginBtn.disabled = false;
           loginBtn.textContent = 'Sign In';
           return;
@@ -373,17 +381,20 @@
         localStorage.setItem('email', data.email);
         localStorage.setItem('userInfo', JSON.stringify(data));
 
-        showMessage('Login successful! Redirecting...', 'success');
+        document.getElementById('successMsg').textContent = 'Login successful! Redirecting...';
+        document.getElementById('successMsg').classList.add('show');
         
         // 确保数据保存后再重定向到资产页面
         setTimeout(() => {
           console.log('[Login] Saved tokens, redirecting to assets.html');
           // 直接跳转到资产页面
           window.location.href = 'assets.html';
-        }, 300);
+        }, 500);
       } catch (error) {
-        console.error('Login error:', error);
-        showMessage('Network error, please try again', 'error');
+        console.error('[Login] Catch error:', error);
+        console.error('[Login] Error message:', error.message);
+        errorMsg.textContent = 'Network error: ' + error.message;
+        errorMsg.classList.add('show');
         loginBtn.disabled = false;
         loginBtn.textContent = 'Sign In';
       }

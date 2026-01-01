@@ -261,6 +261,7 @@
   </style>
 </head>
 <body style="background: var(--bg);">
+  <script src="api-config.js"></script>
   <div class="register-container">
     <div class="register-card">
       <div class="register-header">
@@ -342,11 +343,7 @@
   </div>
 
   <script>
-    const API_BASE = (() => {
-      const protocol = window.location.protocol;
-      const host = window.location.host;
-      return `${protocol}//${host}/api`;
-    })();
+    // API_BASE 已由 api-config.js 定义
 
     // 显示消息提示
     function showMessage(message, type = 'error') {
@@ -407,36 +404,43 @@
       const confirmPassword = document.getElementById('confirmPassword').value;
       const agreeTerms = document.getElementById('agreeTerms').checked;
       const registerBtn = document.getElementById('registerBtn');
+      const errorMsg = document.getElementById('errorMsg');
 
       // 验证输入
       if (password.length < 6) {
-        showMessage('密码至少需要 6 个字符', 'error');
+        errorMsg.textContent = '密码至少需要 6 个字符';
+        errorMsg.classList.add('show');
         return;
       }
 
       if (password !== confirmPassword) {
-        showMessage('两次输入的密码不一致', 'error');
+        errorMsg.textContent = '两次输入的密码不一致';
+        errorMsg.classList.add('show');
         return;
       }
 
       if (!email.includes('@')) {
-        showMessage('Email must contain @', 'error');
+        errorMsg.textContent = 'Email must contain @';
+        errorMsg.classList.add('show');
         return;
       }
 
       if (!/^\d{11}$/.test(phone)) {
-        showMessage('Phone number must be 11 digits', 'error');
+        errorMsg.textContent = 'Phone number must be 11 digits';
+        errorMsg.classList.add('show');
         return;
       }
 
       if (!agreeTerms) {
-        showMessage('请同意服务条款', 'error');
+        errorMsg.textContent = '请同意服务条款';
+        errorMsg.classList.add('show');
         return;
       }
 
       // 禁用按钮，显示加载状态
       registerBtn.disabled = true;
       registerBtn.textContent = '注册中...';
+      errorMsg.classList.remove('show');
 
       try {
         console.log('[Register] 开始发送注册请求...');
@@ -459,14 +463,16 @@
 
         if (!response.ok) {
           console.log('[Register] 注册失败');
-          showMessage(data.message || '注册失败，请检查输入', 'error');
+          errorMsg.textContent = data.message || '注册失败，请检查输入';
+          errorMsg.classList.add('show');
           registerBtn.disabled = false;
           registerBtn.textContent = '创建账户';
           return;
         }
 
         console.log('[Register] 注册成功！');
-        showMessage('注册成功！正在跳转到登录页面...', 'success');
+        document.getElementById('successMsg').textContent = '注册成功！正在跳转到登录页面...';
+        document.getElementById('successMsg').classList.add('show');
         
         setTimeout(() => {
           window.location.href = 'login.html';
@@ -475,7 +481,8 @@
         console.error('[Register] 捕获到异常:', error);
         console.error('[Register] 错误信息:', error.message);
         console.error('[Register] 错误堆栈:', error.stack);
-        showMessage('网络错误，请重试。错误: ' + error.message, 'error');
+        errorMsg.textContent = '网络错误，请重试。错误: ' + error.message;
+        errorMsg.classList.add('show');
         registerBtn.disabled = false;
         registerBtn.textContent = '创建账户';
       }
