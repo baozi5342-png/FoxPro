@@ -439,6 +439,10 @@
       registerBtn.textContent = '注册中...';
 
       try {
+        console.log('[Register] 开始发送注册请求...');
+        console.log('[Register] API URL:', `${API_BASE}/auth/register`);
+        console.log('[Register] 请求数据:', { username, email, phone });
+
         const response = await fetch(`${API_BASE}/auth/register`, {
           method: 'POST',
           headers: {
@@ -447,23 +451,31 @@
           body: JSON.stringify({ username, email, phone, password })
         });
 
+        console.log('[Register] 收到响应, 状态码:', response.status);
+
         const data = await response.json();
+        
+        console.log('[Register] 响应数据:', data);
 
         if (!response.ok) {
+          console.log('[Register] 注册失败');
           showMessage(data.message || '注册失败，请检查输入', 'error');
           registerBtn.disabled = false;
           registerBtn.textContent = '创建账户';
           return;
         }
 
+        console.log('[Register] 注册成功！');
         showMessage('注册成功！正在跳转到登录页面...', 'success');
         
         setTimeout(() => {
           window.location.href = 'login.html';
         }, 1500);
       } catch (error) {
-        console.error('注册错误:', error);
-        showMessage('网络错误，请重试', 'error');
+        console.error('[Register] 捕获到异常:', error);
+        console.error('[Register] 错误信息:', error.message);
+        console.error('[Register] 错误堆栈:', error.stack);
+        showMessage('网络错误，请重试。错误: ' + error.message, 'error');
         registerBtn.disabled = false;
         registerBtn.textContent = '创建账户';
       }

@@ -2891,39 +2891,49 @@ app.get("/api/admin/funds/balance/:userId", (req, res) => {
 app.post("/api/auth/register", (req, res) => {
   const { username, email, phone, password } = req.body;
 
+  console.log('[Register] 接收注册请求:', { username, email, phone });
+
   // 验证必填字段
   if (!username || !email || !phone || !password) {
-    return res.status(400).json({ message: "Missing required fields" });
+    console.log('[Register] 缺少必填字段');
+    return res.status(400).json({ success: false, message: "Missing required fields" });
   }
 
   try {
     // 检查用户名是否已存在
     const existingUser = db.prepare("SELECT * FROM users WHERE username = ?").get(username.toLowerCase());
     if (existingUser) {
-      return res.status(400).json({ message: "Username already exists" });
+      console.log('[Register] 用户名已存在:', username);
+      return res.status(400).json({ success: false, message: "Username already exists" });
     }
 
     // 检查邮箱是否已存在
     const existingEmail = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
     if (existingEmail) {
-      return res.status(400).json({ message: "Email already registered" });
+      console.log('[Register] 邮箱已注册:', email);
+      return res.status(400).json({ success: false, message: "Email already registered" });
     }
 
     // 检查手机号是否已存在
     const existingPhone = db.prepare("SELECT * FROM users WHERE phone = ?").get(phone);
     if (existingPhone) {
-      return res.status(400).json({ message: "Phone number already registered" });
+      console.log('[Register] 手机号已注册:', phone);
+      return res.status(400).json({ success: false, message: "Phone number already registered" });
     }
 
     // 创建新用户 - 生成6位数的用户ID
     const userId = "user_" + String(Math.floor(100000 + Math.random() * 900000));
     const now = new Date().toISOString();
 
+    console.log('[Register] 准备创建用户:', userId);
+
     // 插入用户到数据库
     db.prepare(`
       INSERT INTO users (id, username, email, password, phone, country, status, createdAt, updatedAt)
       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
     `).run(userId, username.toLowerCase(), email, password, phone, "CN", now, now);
+
+    console.log('[Register] 用户创建成功');
 
     // 为新用户创建资产记录（初始为空）
     const emptyBalances = JSON.stringify({
@@ -2943,6 +2953,8 @@ app.post("/api/auth/register", (req, res) => {
       VALUES (?, ?, ?, ?, ?)
     `).run(assetId, userId, emptyBalances, now, now);
 
+    console.log('[Register] 资产记录创建成功');
+
     // 也添加到内存存储（保持兼容性）
     const newUser = {
       userId,
@@ -2955,15 +2967,21 @@ app.post("/api/auth/register", (req, res) => {
     };
     users[username.toLowerCase()] = newUser;
 
+    console.log('[Register] 注册完成，返回成功响应');
+
     res.status(201).json({
+      success: true,
       message: "Registration successful",
       userId,
       username,
       email,
     });
   } catch (err) {
-    console.error("Registration error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("[Register] 注册错误:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error: " + err.message 
+    });
   }
 });
 
