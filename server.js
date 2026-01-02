@@ -7409,54 +7409,56 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-// 仅在非 Vercel 环境中启动服务器
-if (process.env.VERCEL !== '1') {
+// 仅在非 Vercel 环境中启动监听
+if (!module.parent && process.env.VERCEL !== '1') {
   app.listen(PORT, '0.0.0.0', async () => {
-  // 初始化实时价格
-  try {
-    await fetchRealPrices();
-  } catch (err) {
-    console.log('价格获取失败，使用缓存数据');
-  }
-  
-  console.log(`Server running at http://localhost:${PORT}`);
-  console.log(`\nAPI endpoints:`);
-  console.log(`\n认证接口:`);
-  console.log(`  POST /api/auth/register      - 用户注册`);
-  console.log(`  POST /api/auth/login         - 用户登录`);
-  console.log(`  GET  /api/auth/verify        - 验证 Token`);
-  console.log(`  GET  /api/auth/profile       - 获取用户信息`);
-  console.log(`  POST /api/auth/logout        - 用户登出`);
-  console.log(`\n账户管理接口:`);
-  console.log(`  POST /api/account/verification/primary - 提交主要验证`);
-  console.log(`  POST /api/account/verification/advanced - 提交高级验证`);
-  console.log(`  POST /api/account/change-password/:type - 修改密码`);
-  console.log(`  GET  /api/account/verification-status - 获取验证状态`);
-  console.log(`\n页面管理接口:`);
-  console.log(`  GET  /api/pages              - 获取所有可管理的页面`);
-  console.log(`  GET  /api/pages/:pageId/sections - 获取页面的所有区域`);
-  console.log(`  GET  /api/pages/:pageId/section/:sectionKey - 获取特定区域内容`);
-  console.log(`  PUT  /api/admin/pages/:pageId/sections/:sectionId - 更新页面区域`);
-  console.log(`  POST /api/admin/pages/:pageId/sections - 创建新页面区域`);
-  console.log(`  DELETE /api/admin/pages/:pageId/sections/:sectionId - 删除页面区域`);
-  console.log(`\n秒合约接口:`);
-  console.log(`  GET  /api/quick-contract/config - 获取秒合约配置`);
-  console.log(`  POST /api/quick-contract/place - 下达秒合约订单`);
-  console.log(`  GET  /api/quick-contract/orders - 获取用户订单`);
-  console.log(`  POST /api/admin/quick-contract/config - 管理员配置秒合约`);
-  console.log(`  GET  /api/session/:id/balance- 用户余额`);
-  console.log(`\n理财产品接口:`);
-  console.log(`  GET  /api/wealth/products    - 获取理财产品列表`);
-  console.log(`  POST /api/wealth/purchase    - 购买理财产品`);
-  console.log(`  GET  /api/wealth/orders      - 获取用户理财订单`);
-  console.log(`  POST /api/wealth/redeem      - 提取理财产品`);
-  console.log(`\n资产接口:`);
-  console.log(`  GET  /api/assets             - 用户资产`);
-  console.log(`  GET  /api/orders             - 用户订单`);
-  console.log(`  GET  /api/market-detail/:pair- 市场详情`);
-  console.log(`  GET  /api/market-details     - 所有市场详情`);
-});
+    try {
+      await fetchRealPrices();
+    } catch (err) {
+      console.log('价格获取失败，使用缓存数据');
+    }
+    
+    console.log(`Server running at http://localhost:${PORT}`);
+    console.log(`\nAPI endpoints:`);
+    console.log(`\n认证接口:`);
+    console.log(`  POST /api/auth/register      - 用户注册`);
+    console.log(`  POST /api/auth/login         - 用户登录`);
+    console.log(`  GET  /api/auth/verify        - 验证 Token`);
+    console.log(`  GET  /api/auth/profile       - 获取用户信息`);
+    console.log(`  POST /api/auth/logout        - 用户登出`);
+    console.log(`\n账户管理接口:`);
+    console.log(`  POST /api/account/verification/primary - 提交主要验证`);
+    console.log(`  POST /api/account/verification/advanced - 提交高级验证`);
+    console.log(`  POST /api/account/change-password/:type - 修改密码`);
+    console.log(`  GET  /api/account/verification-status - 获取验证状态`);
+    console.log(`\n页面管理接口:`);
+    console.log(`  GET  /api/pages              - 获取所有可管理的页面`);
+    console.log(`  GET  /api/pages/:pageId/sections - 获取页面的所有区域`);
+    console.log(`  GET  /api/pages/:pageId/section/:sectionKey - 获取特定区域内容`);
+    console.log(`  PUT  /api/admin/pages/:pageId/sections/:sectionId - 更新页面区域`);
+    console.log(`  POST /api/admin/pages/:pageId/sections - 创建新页面区域`);
+    console.log(`  DELETE /api/admin/pages/:pageId/sections/:sectionId - 删除页面区域`);
+    console.log(`\n秒合约接口:`);
+    console.log(`  GET  /api/quick-contract/config - 获取秒合约配置`);
+    console.log(`  POST /api/quick-contract/place - 下达秒合约订单`);
+    console.log(`  GET  /api/quick-contract/orders - 获取用户订单`);
+    console.log(`  POST /api/admin/quick-contract/config - 管理员配置秒合约`);
+    console.log(`  GET  /api/session/:id/balance- 用户余额`);
+    console.log(`\n理财产品接口:`);
+    console.log(`  GET  /api/wealth/products    - 获取理财产品列表`);
+    console.log(`  POST /api/wealth/purchase    - 购买理财产品`);
+    console.log(`  GET  /api/wealth/orders      - 获取用户理财订单`);
+    console.log(`  POST /api/wealth/redeem      - 提取理财产品`);
+    console.log(`\n资产接口:`);
+    console.log(`  GET  /api/assets             - 用户资产`);
+    console.log(`  GET  /api/orders             - 用户订单`);
+    console.log(`  GET  /api/market-detail/:pair- 市场详情`);
+    console.log(`  GET  /api/market-details     - 所有市场详情`);
+  });
 }
+
+// 导出给 Vercel
+module.exports = app;
 
 // ==================== 模拟市场数据 ====================
 // 生成实时价格数据
@@ -8187,11 +8189,3 @@ app.get("/api/admin/pages", (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
-// 在 Vercel 环境中导出应用，否则启动服务器
-if (process.env.VERCEL === '1') {
-  module.exports = app;
-} else {
-  console.log('Starting server...');
-  // 服务器启动代码在上面的 app.listen 中
-}
