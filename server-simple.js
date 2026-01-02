@@ -83,6 +83,9 @@ const certificationSchema = new mongoose.Schema({
 
 const Certification = mongoose.model('Certification', certificationSchema);
 
+// 内存存储认证记录（备选方案）
+const inMemoryCertifications = {};
+
 // 调试日志中间件
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
@@ -134,23 +137,34 @@ app.post('/api/auth/register', async (req, res) => {
         console.log(`✅ 用户 ${username} 已保存到MongoDB`);
         
         // 创建初始认证记录（状态为pending）
-        const primaryCert = new Certification({
+        const primaryCertData = {
           userId: userId,
           username: username.toLowerCase(),
           type: 'primary',
           status: 'pending',
           submittedAt: timestamp
-        });
-        const advancedCert = new Certification({
+        };
+        const advancedCertData = {
           userId: userId,
           username: username.toLowerCase(),
           type: 'advanced',
           status: 'pending',
           submittedAt: timestamp
-        });
-        await primaryCert.save();
-        await advancedCert.save();
-        console.log(`✅ 已为用户 ${username} 创建初级和高级认证记录（待审核状态）`);
+        };
+        
+        // 同时保存到内存和MongoDB
+        inMemoryCertifications[`${userId}-primary`] = primaryCertData;
+        inMemoryCertifications[`${userId}-advanced`] = advancedCertData;
+        
+        try {
+          const primaryCert = new Certification(primaryCertData);
+          const advancedCert = new Certification(advancedCertData);
+          await primaryCert.save();
+          await advancedCert.save();
+          console.log(`✅ 已为用户 ${username} 创建初级和高级认证记录到MongoDB（待审核状态）`);
+        } catch (certErr) {
+          console.warn(`⚠️  认证记录MongoDB保存失败，但已保存到内存: ${certErr.message}`);
+        }
       } catch (dbErr) {
         console.error('⚠️  MongoDB存储失败，但用户已保存到内存:', dbErr.message);
       }
@@ -345,19 +359,35 @@ app.get('/api/admin/auth/primary', async (req, res) => {
     jwt.verify(token, JWT_SECRET);
     
     let certifications = [];
+    const certMap = {};
     
-    // 尝试从MongoDB获取认证数据
+    // 首先从MongoDB获取认证数据
     if (mongoConnected) {
       try {
-        certifications = await Certification.find({ type: 'primary' }).lean();
-        console.log(`✅ 从MongoDB获取了 ${certifications.length} 条初级认证记录`);
+        const dbCerts = await Certification.find({ type: 'primary' }).lean();
+        console.log(`✅ 从MongoDB获取了 ${dbCerts.length} 条初级认证记录`);
+        dbCerts.forEach(cert => {
+          certMap[cert.userId] = cert;
+        });
       } catch (dbErr) {
         console.error('❌ MongoDB查询错误:', dbErr.message);
       }
     }
     
+    // 同时检查内存中的认证记录
+    Object.values(inMemoryCertifications).forEach(cert => {
+      if (cert.type === 'primary' && !certMap[cert.userId]) {
+        certMap[cert.userId] = cert;
+        console.log(`ℹ️  从内存补充初级认证记录: ${cert.username}`);
+      }
+    });
+    
+    certifications = Object.values(certMap);
+    console.log(`📊 初级认证总共返回 ${certifications.length} 条记录`);
+    
     res.json({ success: true, data: certifications });
   } catch (error) {
+    console.error('❌ /api/admin/auth/primary 错误:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -370,19 +400,35 @@ app.get('/api/admin/auth/advanced', async (req, res) => {
     jwt.verify(token, JWT_SECRET);
     
     let certifications = [];
+    const certMap = {};
     
-    // 尝试从MongoDB获取认证数据
+    // 首先从MongoDB获取认证数据
     if (mongoConnected) {
       try {
-        certifications = await Certification.find({ type: 'advanced' }).lean();
-        console.log(`✅ 从MongoDB获取了 ${certifications.length} 条高级认证记录`);
+        const dbCerts = await Certification.find({ type: 'advanced' }).lean();
+        console.log(`✅ 从MongoDB获取了 ${dbCerts.length} 条高级认证记录`);
+        dbCerts.forEach(cert => {
+          certMap[cert.userId] = cert;
+        });
       } catch (dbErr) {
         console.error('❌ MongoDB查询错误:', dbErr.message);
       }
     }
     
+    // 同时检查内存中的认证记录
+    Object.values(inMemoryCertifications).forEach(cert => {
+      if (cert.type === 'advanced' && !certMap[cert.userId]) {
+        certMap[cert.userId] = cert;
+        console.log(`ℹ️  从内存补充高级认证记录: ${cert.username}`);
+      }
+    });
+    
+    certifications = Object.values(certMap);
+    console.log(`📊 高级认证总共返回 ${certifications.length} 条记录`);
+    
     res.json({ success: true, data: certifications });
   } catch (error) {
+    console.error('❌ /api/admin/auth/advanced 错误:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
