@@ -598,7 +598,7 @@
                   <th>用户名</th>
                   <th>邮箱</th>
                   <th>电话</th>
-                  <th>余额</th>
+                  <th>状态</th>
                   <th>操作</th>
                 </tr>
               </thead>
@@ -1344,8 +1344,11 @@
               <td>${user.username}</td>
               <td>${user.email || 'N/A'}</td>
               <td>${user.phone || 'N/A'}</td>
-              <td>$0</td>
-              <td><button class="btn btn-primary btn-small" onclick="editUser('${user.id}')">编辑</button></td>
+              <td><span class="status-badge status-${user.status === 'active' ? 'success' : 'danger'}">${user.status === 'active' ? '活跃' : '禁用'}</span></td>
+              <td>
+                <button class="btn btn-primary btn-small" onclick="toggleUserStatus('${user.id}')">切换状态</button>
+                <button class="btn btn-danger btn-small" onclick="deleteUser('${user.id}', '${user.username}')">删除</button>
+              </td>
             </tr>
           `).join('');
         }
@@ -1363,12 +1366,17 @@
         const data = await res.json();
         if (data.success && Array.isArray(data.data)) {
           const table = document.getElementById('primaryAuthTable');
+          const statusBadge = (status) => {
+            if (status === 'approved') return '<span class="badge badge-success">已批准</span>';
+            if (status === 'rejected') return '<span class="badge badge-danger">已驳回</span>';
+            return '<span class="badge badge-warning">待审核</span>';
+          };
           table.innerHTML = data.data.length > 0 ? data.data.map(auth => `
             <tr>
               <td>${auth.username}</td>
               <td>${auth.idNumber || 'N/A'}</td>
               <td>${new Date(auth.submittedAt).toLocaleDateString()}</td>
-              <td><span class="badge badge-warning">待审核</span></td>
+              <td>${statusBadge(auth.status)}</td>
               <td>
                 <button class="btn btn-success btn-small" onclick="approvePrimaryAuth('${auth.id}')">批准</button>
                 <button class="btn btn-danger btn-small" onclick="rejectAuth('${auth.id}')">驳回</button>
@@ -1390,12 +1398,17 @@
         const data = await res.json();
         if (data.success && Array.isArray(data.data)) {
           const table = document.getElementById('advancedAuthTable');
+          const statusBadge = (status) => {
+            if (status === 'approved') return '<span class="badge badge-success">已批准</span>';
+            if (status === 'rejected') return '<span class="badge badge-danger">已驳回</span>';
+            return '<span class="badge badge-warning">待审核</span>';
+          };
           table.innerHTML = data.data.length > 0 ? data.data.map(auth => `
             <tr>
               <td>${auth.username}</td>
               <td>${auth.bankCard || 'N/A'}</td>
               <td>${new Date(auth.submittedAt).toLocaleDateString()}</td>
-              <td><span class="badge badge-warning">待审核</span></td>
+              <td>${statusBadge(auth.status)}</td>
               <td>
                 <button class="btn btn-success btn-small" onclick="approveAdvancedAuth('${auth.id}')">批准</button>
                 <button class="btn btn-danger btn-small" onclick="rejectAuth('${auth.id}')">驳回</button>
@@ -1504,22 +1517,84 @@
 
     function approvePrimaryAuth(id) {
       if (confirm('确定要批准该认证吗？')) {
-        alert('已批准初级认证');
-        loadPrimaryAuth();
+        const token = localStorage.getItem('adminToken');
+        fetch(`${API_BASE}/admin/auth/approve`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ certificationId: id })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('✅ 初级认证已批准');
+            loadPrimaryAuth();
+          } else {
+            alert('❌ 批准失败: ' + data.message);
+          }
+        })
+        .catch(err => {
+          console.error('Error:', err);
+          alert('❌ 请求失败');
+        });
       }
     }
 
     function approveAdvancedAuth(id) {
       if (confirm('确定要批准该认证吗？')) {
-        alert('已批准高级认证');
-        loadAdvancedAuth();
+        const token = localStorage.getItem('adminToken');
+        fetch(`${API_BASE}/admin/auth/approve`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ certificationId: id })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('✅ 高级认证已批准');
+            loadAdvancedAuth();
+          } else {
+            alert('❌ 批准失败: ' + data.message);
+          }
+        })
+        .catch(err => {
+          console.error('Error:', err);
+          alert('❌ 请求失败');
+        });
       }
     }
 
     function rejectAuth(id) {
-      if (confirm('确定要驳回该认证吗？')) {
-        alert('已驳回认证');
-        loadPrimaryAuth();
+      const reason = prompt('请输入驳回理由（可选）:');
+      if (reason !== null) {
+        const token = localStorage.getItem('adminToken');
+        fetch(`${API_BASE}/admin/auth/reject`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ certificationId: id, reason: reason })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('✅ 认证已驳回');
+            loadPrimaryAuth();
+            loadAdvancedAuth();
+          } else {
+            alert('❌ 驳回失败: ' + data.message);
+          }
+        })
+        .catch(err => {
+          console.error('Error:', err);
+          alert('❌ 请求失败');
+        });
       }
     }
 
@@ -2265,6 +2340,58 @@
 
     function editUser(id) {
       alert('编辑用户: ' + id);
+    }
+
+    function toggleUserStatus(userId) {
+      if (confirm('确定要切换该用户的状态吗？')) {
+        const token = localStorage.getItem('adminToken');
+        fetch(`${API_BASE}/admin/users/${userId}/toggle-status`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('✅ 用户状态已更新');
+            loadUsers();
+          } else {
+            alert('❌ 更新失败: ' + data.message);
+          }
+        })
+        .catch(err => {
+          console.error('Error:', err);
+          alert('❌ 请求失败');
+        });
+      }
+    }
+
+    function deleteUser(userId, username) {
+      if (confirm(`确定要删除用户 ${username} 吗？此操作无法撤销！`)) {
+        const token = localStorage.getItem('adminToken');
+        fetch(`${API_BASE}/admin/users/${userId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('✅ 用户已删除');
+            loadUsers();
+          } else {
+            alert('❌ 删除失败: ' + data.message);
+          }
+        })
+        .catch(err => {
+          console.error('Error:', err);
+          alert('❌ 请求失败');
+        });
+      }
     }
 
     function loadTradeDetails() {

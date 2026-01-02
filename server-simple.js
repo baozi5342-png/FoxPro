@@ -74,6 +74,8 @@ const certificationSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
   submittedAt: String,
   approvedAt: String,
+  verifiedAt: Date,
+  rejectionReason: String,
   idNumber: String,
   idType: String,
   documents: [String],
@@ -339,9 +341,16 @@ app.get('/api/admin/users', async (req, res) => {
         const dbUsers = await User.find({}, { password: 0 }).lean();
         console.log(`✅ 从MongoDB获取了 ${dbUsers.length} 个用户`);
         dbUsers.forEach(u => {
-          userMap[u.id] = {
-            id: u.id, username: u.username, email: u.email,
-            phone: u.phone, country: u.country, status: u.status, createdAt: u.createdAt
+          // 确保使用id字段，如果没有则使用_id
+          const userId = u.id || u._id?.toString();
+          userMap[userId] = {
+            id: userId, 
+            username: u.username, 
+            email: u.email,
+            phone: u.phone, 
+            country: u.country, 
+            status: u.status || 'active', 
+            createdAt: u.createdAt
           };
         });
       } catch (dbErr) {
@@ -354,8 +363,13 @@ app.get('/api/admin/users', async (req, res) => {
       Object.values(inMemoryUsers).forEach(u => {
         if (!userMap[u.id]) { // 避免重复
           userMap[u.id] = {
-            id: u.id, username: u.username, email: u.email,
-            phone: u.phone, country: u.country, status: u.status, createdAt: u.createdAt
+            id: u.id, 
+            username: u.username, 
+            email: u.email,
+            phone: u.phone, 
+            country: u.country, 
+            status: u.status || 'active', 
+            createdAt: u.createdAt
           };
           console.log(`ℹ️  从内存存储补充用户: ${u.username}`);
         }
@@ -367,10 +381,7 @@ app.get('/api/admin/users', async (req, res) => {
     
     res.json({
       success: true,
-      data: users.map(u => ({
-        id: u.id, username: u.username, email: u.email,
-        phone: u.phone, country: u.country, status: u.status, createdAt: u.createdAt
-      }))
+      data: users
     });
   } catch (error) {
     console.error('❌ /api/admin/users 错误:', error);
@@ -475,6 +486,243 @@ app.get('/api/admin/auth/advanced', async (req, res) => {
     res.json({ success: true, data: certifications });
   } catch (error) {
     console.error('❌ /api/admin/auth/advanced 错误:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// =========== 认证管理API ===========
+// 批准认证
+app.post('/api/admin/auth/approve', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'No token' });
+    
+    jwt.verify(token, JWT_SECRET);
+    const { certificationId } = req.body;
+    
+    if (!certificationId) {
+      return res.status(400).json({ success: false, message: 'certificationId required' });
+    }
+    
+    // 更新MongoDB中的认证
+    if (mongoConnected) {
+      try {
+        const result = await Certification.findByIdAndUpdate(
+          certificationId,
+          { status: 'approved', verifiedAt: new Date() },
+          { new: true }
+        );
+        
+        if (result) {
+          console.log(`✅ 认证已批准: ${result.username} (${result.type})`);
+          return res.json({ success: true, message: '认证已批准', data: result });
+        }
+      } catch (dbErr) {
+        console.error('❌ MongoDB更新错误:', dbErr.message);
+      }
+    }
+    
+    // 更新内存中的认证
+    for (const id in inMemoryCertifications) {
+      if (inMemoryCertifications[id].id === certificationId) {
+        inMemoryCertifications[id].status = 'approved';
+        inMemoryCertifications[id].verifiedAt = new Date();
+        console.log(`✅ 内存认证已批准: ${inMemoryCertifications[id].username}`);
+        return res.json({ success: true, message: '认证已批准', data: inMemoryCertifications[id] });
+      }
+    }
+    
+    res.status(404).json({ success: false, message: '认证记录未找到' });
+  } catch (error) {
+    console.error('❌ /api/admin/auth/approve 错误:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 驳回认证
+app.post('/api/admin/auth/reject', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'No token' });
+    
+    jwt.verify(token, JWT_SECRET);
+    const { certificationId, reason } = req.body;
+    
+    if (!certificationId) {
+      return res.status(400).json({ success: false, message: 'certificationId required' });
+    }
+    
+    // 更新MongoDB中的认证
+    if (mongoConnected) {
+      try {
+        const result = await Certification.findByIdAndUpdate(
+          certificationId,
+          { 
+            status: 'rejected', 
+            verifiedAt: new Date(),
+            rejectionReason: reason || '不符合要求'
+          },
+          { new: true }
+        );
+        
+        if (result) {
+          console.log(`✅ 认证已驳回: ${result.username} (${result.type})`);
+          return res.json({ success: true, message: '认证已驳回', data: result });
+        }
+      } catch (dbErr) {
+        console.error('❌ MongoDB更新错误:', dbErr.message);
+      }
+    }
+    
+    // 更新内存中的认证
+    for (const id in inMemoryCertifications) {
+      if (inMemoryCertifications[id].id === certificationId) {
+        inMemoryCertifications[id].status = 'rejected';
+        inMemoryCertifications[id].verifiedAt = new Date();
+        inMemoryCertifications[id].rejectionReason = reason || '不符合要求';
+        console.log(`✅ 内存认证已驳回: ${inMemoryCertifications[id].username}`);
+        return res.json({ success: true, message: '认证已驳回', data: inMemoryCertifications[id] });
+      }
+    }
+    
+    res.status(404).json({ success: false, message: '认证记录未找到' });
+  } catch (error) {
+    console.error('❌ /api/admin/auth/reject 错误:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// =========== 用户管理API ===========
+// 更新用户信息
+app.put('/api/admin/users/:userId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'No token' });
+    
+    jwt.verify(token, JWT_SECRET);
+    const { userId } = req.params;
+    const updateData = req.body;
+    
+    // 更新MongoDB用户
+    if (mongoConnected) {
+      try {
+        const user = await User.findByIdAndUpdate(
+          userId,
+          { ...updateData, updatedAt: new Date() },
+          { new: true }
+        );
+        
+        if (user) {
+          console.log(`✅ 用户已更新: ${user.username}`);
+          return res.json({ success: true, message: '用户信息已更新', data: user });
+        }
+      } catch (dbErr) {
+        console.error('❌ MongoDB更新错误:', dbErr.message);
+      }
+    }
+    
+    // 更新内存中的用户
+    for (const id in inMemoryUsers) {
+      if (inMemoryUsers[id].id === userId) {
+        inMemoryUsers[id] = { ...inMemoryUsers[id], ...updateData, updatedAt: new Date() };
+        console.log(`✅ 内存用户已更新: ${inMemoryUsers[id].username}`);
+        return res.json({ success: true, message: '用户信息已更新', data: inMemoryUsers[id] });
+      }
+    }
+    
+    res.status(404).json({ success: false, message: '用户未找到' });
+  } catch (error) {
+    console.error('❌ /api/admin/users/:userId 错误:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 删除用户
+app.delete('/api/admin/users/:userId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'No token' });
+    
+    jwt.verify(token, JWT_SECRET);
+    const { userId } = req.params;
+    
+    // 删除MongoDB用户
+    if (mongoConnected) {
+      try {
+        const user = await User.findByIdAndDelete(userId);
+        
+        if (user) {
+          // 同时删除相关认证
+          await Certification.deleteMany({ userId: user.id });
+          console.log(`✅ 用户已删除: ${user.username}`);
+          return res.json({ success: true, message: '用户已删除' });
+        }
+      } catch (dbErr) {
+        console.error('❌ MongoDB删除错误:', dbErr.message);
+      }
+    }
+    
+    // 删除内存中的用户
+    for (const id in inMemoryUsers) {
+      if (inMemoryUsers[id].id === userId) {
+        const username = inMemoryUsers[id].username;
+        delete inMemoryUsers[id];
+        console.log(`✅ 内存用户已删除: ${username}`);
+        
+        // 同时删除相关认证
+        Object.keys(inMemoryCertifications).forEach(key => {
+          if (inMemoryCertifications[key].userId === userId) {
+            delete inMemoryCertifications[key];
+          }
+        });
+        
+        return res.json({ success: true, message: '用户已删除' });
+      }
+    }
+    
+    res.status(404).json({ success: false, message: '用户未找到' });
+  } catch (error) {
+    console.error('❌ /api/admin/users/:userId DELETE 错误:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 禁用/启用用户
+app.post('/api/admin/users/:userId/toggle-status', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'No token' });
+    
+    jwt.verify(token, JWT_SECRET);
+    const { userId } = req.params;
+    
+    // 更新MongoDB用户
+    if (mongoConnected) {
+      try {
+        const user = await User.findById(userId);
+        if (user) {
+          user.status = user.status === 'active' ? 'disabled' : 'active';
+          await user.save();
+          console.log(`✅ 用户状态已更新: ${user.username} -> ${user.status}`);
+          return res.json({ success: true, message: '用户状态已更新', data: user });
+        }
+      } catch (dbErr) {
+        console.error('❌ MongoDB更新错误:', dbErr.message);
+      }
+    }
+    
+    // 更新内存中的用户
+    for (const id in inMemoryUsers) {
+      if (inMemoryUsers[id].id === userId) {
+        inMemoryUsers[id].status = inMemoryUsers[id].status === 'active' ? 'disabled' : 'active';
+        console.log(`✅ 内存用户状态已更新: ${inMemoryUsers[id].username} -> ${inMemoryUsers[id].status}`);
+        return res.json({ success: true, message: '用户状态已更新', data: inMemoryUsers[id] });
+      }
+    }
+    
+    res.status(404).json({ success: false, message: '用户未找到' });
+  } catch (error) {
+    console.error('❌ 状态切换错误:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
