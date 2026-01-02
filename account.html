@@ -703,6 +703,11 @@
 
         // Load verification status
         loadVerificationStatus();
+
+        // ============ 自动实时刷新验证状态 ============
+        setInterval(() => {
+          loadVerificationStatus();
+        }, 3000); // 每3秒刷新一次
       });
 
       // Modal functions

@@ -2104,17 +2104,16 @@
     async function loadLendingApplications() {
       const token = localStorage.getItem('adminToken');
       try {
-        const res = await fetch(`${API_BASE}/admin/lending/applications`, {
+        const res = await fetch(`${API_BASE}/admin/lending/requests`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
         if (data.success && Array.isArray(data.data)) {
-          const table = document.getElementById('lendingTable');
-          table.innerHTML = data.data.length > 0 ? data.data.map(app => `
+          const table = document.getElementById('lendingTable') || document.getElementById('applicationsList');
+          const html = data.data.length > 0 ? data.data.map(app => `
             <tr>
               <td>${app.username}</td>
               <td>$${app.amount}</td>
-              <td>${app.rate || '5'}%</td>
               <td>${app.term || '30'}天</td>
               <td>${new Date(app.appliedAt).toLocaleDateString()}</td>
               <td>
@@ -2122,10 +2121,119 @@
                 <button class="btn btn-danger btn-small" onclick="rejectLending('${app.id}')">驳回</button>
               </td>
             </tr>
-          `).join('') : '<tr><td colspan="6" class="empty-state">暂无申请</td></tr>';
+          `).join('') : '<tr><td colspan="5" class="empty-state">暂无申请</td></tr>';
+          if (table) table.innerHTML = html;
         }
       } catch (err) {
         console.error('Failed to load lending applications:', err);
+      }
+    }
+
+    async function loadExchangeRecords() {
+      const token = localStorage.getItem('adminToken');
+      try {
+        const res = await fetch(`${API_BASE}/admin/exchange/records`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          const table = document.getElementById('exchangeTable') || document.getElementById('exchangeList');
+          const html = data.data.length > 0 ? data.data.map(ex => `
+            <tr>
+              <td>${ex.username}</td>
+              <td>${ex.fromSymbol}</td>
+              <td>${ex.toSymbol}</td>
+              <td>${parseFloat(ex.fromAmount).toFixed(6)}</td>
+              <td>${parseFloat(ex.toAmount).toFixed(6)}</td>
+              <td>${new Date(ex.createdAt).toLocaleString('zh-CN')}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="6" class="empty-state">暂无记录</td></tr>';
+          if (table) table.innerHTML = html;
+        }
+      } catch (err) {
+        console.error('Failed to load exchange records:', err);
+      }
+    }
+
+    async function loadLendingRequests() {
+      await loadLendingApplications();
+    }
+
+    async function loadWithdrawalOrders() {
+      const token = localStorage.getItem('adminToken');
+      try {
+        const res = await fetch(`${API_BASE}/admin/withdrawal/orders`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          const table = document.getElementById('withdrawalTable') || document.getElementById('withdrawalList');
+          const html = data.data.length > 0 ? data.data.map(order => {
+            let statusBadge = '';
+            if (order.status === 'pending') {
+              statusBadge = '<span class="badge badge-warning">待处理</span>';
+            } else if (order.status === 'completed') {
+              statusBadge = '<span class="badge badge-success">已完成</span>';
+            }
+            return `
+              <tr>
+                <td>${order.username}</td>
+                <td>${order.symbol}</td>
+                <td>${parseFloat(order.amount).toFixed(6)}</td>
+                <td>${order.address}</td>
+                <td>${statusBadge}</td>
+                <td>${new Date(order.appliedAt).toLocaleString('zh-CN')}</td>
+                <td>${order.status === 'pending' ? `<button class="btn btn-primary btn-small" onclick="approveWithdrawal('${order.id}')">批准</button>` : '已处理'}</td>
+              </tr>
+            `;
+          }).join('') : '<tr><td colspan="7" class="empty-state">暂无订单</td></tr>';
+          if (table) table.innerHTML = html;
+        }
+      } catch (err) {
+        console.error('Failed to load withdrawal orders:', err);
+      }
+    }
+
+    async function loadQuickContractTrades() {
+      const token = localStorage.getItem('adminToken');
+      try {
+        const res = await fetch(`${API_BASE}/admin/quick-contract/trades`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          const table = document.getElementById('tradesTable') || document.getElementById('tradesList');
+          const html = data.data.length > 0 ? data.data.map(trade => `
+            <tr>
+              <td>${trade.username}</td>
+              <td>${trade.symbol}</td>
+              <td>${trade.amount}</td>
+              <td><span class="badge ${trade.result === 'win' ? 'badge-success' : 'badge-danger'}">${trade.result === 'win' ? '赢' : '亏'}</span></td>
+              <td>${new Date(trade.createdAt).toLocaleString('zh-CN')}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="5" class="empty-state">暂无交易</td></tr>';
+          if (table) table.innerHTML = html;
+        }
+      } catch (err) {
+        console.error('Failed to load trades:', err);
+      }
+    }
+
+    async function approveWithdrawal(withdrawalId) {
+      const token = localStorage.getItem('adminToken');
+      try {
+        const res = await fetch(`${API_BASE}/admin/withdrawal/approve`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ withdrawalId, txHash: 'manual_' + Date.now() })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('提现已批准');
+          loadWithdrawalOrders();
+        }
+      } catch (err) {
+        console.error('Approval failed:', err);
       }
     }
 
@@ -2437,6 +2545,47 @@
       }
 
       loadDashboard();
+
+      // ============ 自动实时刷新 ============
+      setInterval(() => {
+        const activeSection = document.querySelector('[data-section-id]');
+        if (activeSection) {
+          const sectionId = activeSection.getAttribute('data-section-id');
+          
+          // 根据当前活跃的section自动刷新
+          if (sectionId === 'dashboard') loadDashboard();
+          else if (sectionId === 'users') loadUsers();
+          else if (sectionId === 'primary-auth') loadPrimaryAuth();
+          else if (sectionId === 'advanced-auth') loadAdvancedAuth();
+          else if (sectionId === 'quick-contract') loadQuickContractTrades();
+          else if (sectionId === 'contract-trades') loadQuickContractTrades();
+          else if (sectionId === 'wealth') loadLendingProducts();
+          else if (sectionId === 'exchange-rates') loadExchangeRecords();
+          else if (sectionId === 'recharge') loadRechargeOrders();
+          else if (sectionId === 'lending') loadLendingRequests();
+          else if (sectionId === 'withdrawal') loadWithdrawalOrders();
+        }
+      }, 3000); // 每3秒刷新一次
+
+      // 页面切换时也立即刷新数据
+      document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function() {
+          setTimeout(() => {
+            const sectionId = this.getAttribute('data-nav-link');
+            if (sectionId === 'dashboard') loadDashboard();
+            else if (sectionId === 'users') loadUsers();
+            else if (sectionId === 'primary-auth') loadPrimaryAuth();
+            else if (sectionId === 'advanced-auth') loadAdvancedAuth();
+            else if (sectionId === 'quick-contract') loadQuickContractTrades();
+            else if (sectionId === 'contract-trades') loadQuickContractTrades();
+            else if (sectionId === 'wealth') loadLendingProducts();
+            else if (sectionId === 'exchange-rates') loadExchangeRecords();
+            else if (sectionId === 'recharge') loadRechargeOrders();
+            else if (sectionId === 'lending') loadLendingRequests();
+            else if (sectionId === 'withdrawal') loadWithdrawalOrders();
+          }, 100);
+        });
+      });
     });
   </script>
 </body>
