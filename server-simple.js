@@ -1,12 +1,54 @@
-// 简化的FoxPro Exchange服务器 - 用于Render部署
+// 简化的FoxPro Exchange服务器 - 用于Render部署（使用MongoDB）
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const jwt = require('jsonwebtoken');
-const tempDataStore = require('./temp-datastore');
+const mongoose = require('mongoose');
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'foxpro-secret-key-2026';
+
+// ============ MongoDB 连接 ============
+const getMongoDBURL = () => {
+  if (process.env.MONGODB_URI) {
+    return process.env.MONGODB_URI;
+  }
+  const username = encodeURIComponent('root');
+  const password = encodeURIComponent('Dd112211');
+  const cluster = 'cluster0.rnxc0c4.mongodb.net';
+  const dbName = 'foxpro';
+  return `mongodb+srv://${username}:${password}@${cluster}/${dbName}?appName=Cluster0&retryWrites=true&w=majority`;
+};
+
+async function connectMongoDB() {
+  try {
+    const mongoURL = getMongoDBURL();
+    await mongoose.connect(mongoURL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('✅ MongoDB 连接成功');
+    return true;
+  } catch (err) {
+    console.error('❌ MongoDB 连接失败:', err.message);
+    return false;
+  }
+}
+
+// ============ MongoDB 用户模型 ============
+const userSchema = new mongoose.Schema({
+  id: { type: String, unique: true, required: true },
+  username: { type: String, unique: true, required: true, lowercase: true },
+  email: { type: String, unique: true, sparse: true },
+  password: { type: String, required: true },
+  phone: String,
+  country: String,
+  status: { type: String, default: 'active' },
+  isAdmin: { type: Number, default: 0 },
+  createdAt: String,
+  updatedAt: String,
+}, { collection: 'users' });
+
+const User = mongoose.model('User', userSchema);
 
 // 中间件
 app.use(cors());
@@ -21,7 +63,7 @@ app.use((req, res, next) => {
 // ============ API 路由 ============
 
 // 用户注册
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, email, phone, password } = req.body;
 
@@ -30,13 +72,14 @@ app.post('/api/auth/register', (req, res) => {
     }
 
     // 检查用户是否存在
-    if (tempDataStore.getUser(username.toLowerCase())) {
+    const existingUser = await User.findOne({ username: username.toLowerCase() });
+    if (existingUser) {
       return res.status(400).json({ success: false, message: 'Username already exists' });
     }
 
     // 创建新用户
     const userId = 'user_' + Math.floor(100000 + Math.random() * 900000);
-    const newUser = {
+    const newUser = new User({
       id: userId,
       username: username.toLowerCase(),
       email: email,
@@ -44,13 +87,13 @@ app.post('/api/auth/register', (req, res) => {
       phone: phone,
       country: 'CN',
       status: 'active',
+      isAdmin: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    };
+    });
 
-    tempDataStore.addUser(newUser);
+    await newUser.save();
 
-    // 生成JWT Token
     const token = jwt.sign({
       id: userId,
       username: username.toLowerCase(),
@@ -64,8 +107,7 @@ app.post('/api/auth/register', (req, res) => {
       user: {
         id: userId,
         username: username.toLowerCase(),
-        email: email,
-        phone: phone
+        email: email
       },
       token: token
     });
@@ -76,7 +118,7 @@ app.post('/api/auth/register', (req, res) => {
 });
 
 // 用户登录
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -84,7 +126,7 @@ app.post('/api/auth/login', (req, res) => {
       return res.status(400).json({ success: false, message: 'Username and password required' });
     }
 
-    const user = tempDataStore.getUser(username.toLowerCase());
+    const user = await User.findOne({ username: username.toLowerCase() });
     if (!user || user.password !== password) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
@@ -93,7 +135,7 @@ app.post('/api/auth/login', (req, res) => {
       id: user.id,
       username: user.username,
       email: user.email,
-      isAdmin: 0
+      isAdmin: user.isAdmin || 0
     }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({
@@ -112,8 +154,8 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
-// 获取用户信息
-app.get('/api/auth/profile', (req, res) => {
+// 获取用户资料
+app.get('/api/auth/profile', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -121,7 +163,7 @@ app.get('/api/auth/profile', (req, res) => {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = tempDataStore.getUserById(decoded.id);
+    const user = await User.findOne({ id: decoded.id });
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -132,8 +174,7 @@ app.get('/api/auth/profile', (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        email: user.email,
-        phone: user.phone
+        email: user.email
       }
     });
   } catch (error) {
@@ -141,29 +182,27 @@ app.get('/api/auth/profile', (req, res) => {
   }
 });
 
-// 静态文件服务
-app.use(express.static(path.join(__dirname)));
-
 // 健康检查
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// 启动服务器
+// ============ 启动服务器 ============
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n========================================`);
-  console.log(`   FoxPro Exchange Server`);
-  console.log(`   Port: ${PORT}`);
-  console.log(`========================================\n`);
-  console.log(`✅ Server running at http://localhost:${PORT}`);
-  console.log(`✅ API Base: http://localhost:${PORT}/api`);
-  console.log(`\nMain endpoints:`);
-  console.log(`  POST /api/auth/register     - User registration`);
-  console.log(`  POST /api/auth/login        - User login`);
-  console.log(`  GET  /api/auth/profile      - Get user profile`);
-  console.log(`  GET  /health                - Health check`);
-  console.log(`\n========================================\n`);
-});
 
-module.exports = app;
+async function startServer() {
+  // 尝试连接MongoDB
+  const mongoConnected = await connectMongoDB();
+
+  app.listen(PORT, () => {
+    console.log(`\n🚀 FoxPro Exchange 服务器运行在 http://localhost:${PORT}`);
+    console.log(`📊 数据存储: ${mongoConnected ? 'MongoDB (持久化)' : '内存存储 (临时)'}`);
+    console.log('\n可用的API端点:');
+    console.log(`  POST /api/auth/register     - User registration`);
+    console.log(`  POST /api/auth/login        - User login`);
+    console.log(`  GET  /api/auth/profile      - User profile`);
+    console.log(`  GET  /health                - Health check`);
+  });
+}
+
+startServer();
