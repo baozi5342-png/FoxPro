@@ -69,7 +69,7 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    const existingUser = await User.findOne({ username: username.toLowerCase() });
+    const existingUser = await User.findOne({ username: username.toLowerCase() }).lean();
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Username already exists' });
     }
@@ -104,8 +104,8 @@ app.post('/api/auth/register', async (req, res) => {
       token: token
     });
   } catch (error) {
-    console.error('Registration error:', error.message);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ Registration error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Registration failed' });
   }
 });
 
@@ -117,7 +117,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Username and password required' });
     }
 
-    const user = await User.findOne({ username: username.toLowerCase() });
+    const user = await User.findOne({ username: username.toLowerCase() }).lean();
     if (!user || user.password !== password) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
@@ -136,8 +136,8 @@ app.post('/api/auth/login', async (req, res) => {
       token: token
     });
   } catch (error) {
-    console.error('Login error:', error.message);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ Login error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Login failed' });
   }
 });
 
