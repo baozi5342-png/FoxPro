@@ -128,6 +128,16 @@
         color: var(--warning);
       }
 
+      .status-approved {
+        background: rgba(16, 185, 129, 0.2);
+        color: var(--success);
+      }
+
+      .status-rejected {
+        background: rgba(239, 68, 68, 0.2);
+        color: var(--danger);
+      }
+
       .btn {
         padding: 8px 16px;
         border: none;
@@ -874,17 +884,24 @@
           if (response.ok) {
             const result = await response.json();
             
+            // 状态显示映射
+            const statusDisplay = {
+              'pending': 'PENDING',
+              'approved': 'VERIFIED',
+              'rejected': 'REJECTED'
+            };
+            
             // Update primary verification status
             const primaryStatus = document.getElementById('primary-status');
             if (primaryStatus && result.primary) {
-              primaryStatus.textContent = result.primary.toUpperCase();
+              primaryStatus.textContent = statusDisplay[result.primary] || result.primary.toUpperCase();
               primaryStatus.className = `status-badge status-${result.primary.toLowerCase()}`;
             }
             
             // Update advanced verification status
             const advancedStatus = document.getElementById('advanced-status');
             if (advancedStatus && result.advanced) {
-              advancedStatus.textContent = result.advanced.toUpperCase();
+              advancedStatus.textContent = statusDisplay[result.advanced] || result.advanced.toUpperCase();
               advancedStatus.className = `status-badge status-${result.advanced.toLowerCase()}`;
             }
           }
