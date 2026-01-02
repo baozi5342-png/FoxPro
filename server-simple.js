@@ -14,6 +14,9 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname))); // 提供静态文件
 
 // ============ MongoDB 连接 ============
+let mongoConnected = false;
+const inMemoryUsers = {}; // 备用内存存储
+
 const getMongoDBURL = () => {
   if (process.env.MONGODB_URI) {
     return process.env.MONGODB_URI;
@@ -28,11 +31,21 @@ const getMongoDBURL = () => {
 async function connectMongoDB() {
   try {
     const mongoURL = getMongoDBURL();
-    await mongoose.connect(mongoURL);
-    console.log('✅ MongoDB 连接成功');
+    console.log('🔄 正在连接MongoDB...');
+    console.log('   URL:', mongoURL.replace(/password[^@]*@/, 'password=***@'));
+    
+    await mongoose.connect(mongoURL, { 
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000 
+    });
+    
+    mongoConnected = true;
+    console.log('✅ MongoDB 连接成功！');
     return true;
   } catch (err) {
     console.error('❌ MongoDB 连接失败:', err.message);
+    console.warn('⚠️  将使用内存存储作为备选方案');
+    mongoConnected = false;
     return false;
   }
 }
@@ -65,17 +78,14 @@ app.use((req, res, next) => {
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, email, phone, password } = req.body;
+    
     if (!username || !email || !phone || !password) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    const existingUser = await User.findOne({ username: username.toLowerCase() }).lean();
-    if (existingUser) {
-      return res.status(400).json({ success: false, message: 'Username already exists' });
-    }
-
     const userId = 'user_' + Math.floor(100000 + Math.random() * 900000);
-    const newUser = new User({
+    const timestamp = new Date().toISOString();
+    const newUserData = {
       id: userId,
       username: username.toLowerCase(),
       email: email,
@@ -84,11 +94,33 @@ app.post('/api/auth/register', async (req, res) => {
       country: 'CN',
       status: 'active',
       isAdmin: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
 
-    await newUser.save();
+    // 尝试使用MongoDB，如果失败则使用内存存储
+    if (mongoConnected) {
+      try {
+        const existingUser = await User.findOne({ username: username.toLowerCase() }).lean();
+        if (existingUser) {
+          return res.status(400).json({ success: false, message: 'Username already exists' });
+        }
+
+        const newUser = new User(newUserData);
+        await newUser.save();
+        console.log(`✅ 用户 ${username} 已保存到MongoDB`);
+      } catch (dbErr) {
+        console.error('❌ 数据库错误:', dbErr.message);
+        return res.status(500).json({ success: false, message: 'Database error: ' + dbErr.message });
+      }
+    } else {
+      // 使用内存存储
+      if (inMemoryUsers[username.toLowerCase()]) {
+        return res.status(400).json({ success: false, message: 'Username already exists' });
+      }
+      inMemoryUsers[username.toLowerCase()] = newUserData;
+      console.log(`✅ 用户 ${username} 已保存到内存存储`);
+    }
 
     const token = jwt.sign({
       id: userId,
@@ -117,7 +149,20 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Username and password required' });
     }
 
-    const user = await User.findOne({ username: username.toLowerCase() }).lean();
+    let user = null;
+
+    if (mongoConnected) {
+      try {
+        user = await User.findOne({ username: username.toLowerCase() }).lean();
+      } catch (dbErr) {
+        console.error('❌ 数据库查询错误:', dbErr.message);
+        return res.status(500).json({ success: false, message: 'Database error: ' + dbErr.message });
+      }
+    } else {
+      // 使用内存存储查找
+      user = inMemoryUsers[username.toLowerCase()];
+    }
+
     if (!user || user.password !== password) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
