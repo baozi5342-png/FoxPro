@@ -66,6 +66,23 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
+// ============ 认证模型 ============
+const certificationSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  username: { type: String, required: true },
+  type: { type: String, enum: ['primary', 'advanced'], required: true },
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  submittedAt: String,
+  approvedAt: String,
+  idNumber: String,
+  idType: String,
+  documents: [String],
+  verifier: String,
+  notes: String,
+}, { collection: 'certifications' });
+
+const Certification = mongoose.model('Certification', certificationSchema);
+
 // 调试日志中间件
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
@@ -109,6 +126,25 @@ app.post('/api/auth/register', async (req, res) => {
         const newUser = new User(newUserData);
         await newUser.save();
         console.log(`✅ 用户 ${username} 已保存到MongoDB`);
+        
+        // 创建初始认证记录（状态为pending）
+        const primaryCert = new Certification({
+          userId: userId,
+          username: username.toLowerCase(),
+          type: 'primary',
+          status: 'pending',
+          submittedAt: timestamp
+        });
+        const advancedCert = new Certification({
+          userId: userId,
+          username: username.toLowerCase(),
+          type: 'advanced',
+          status: 'pending',
+          submittedAt: timestamp
+        });
+        await primaryCert.save();
+        await advancedCert.save();
+        console.log(`✅ 已为用户 ${username} 创建初级和高级认证记录（待审核状态）`);
       } catch (dbErr) {
         console.error('❌ 数据库错误:', dbErr.message);
         return res.status(500).json({ success: false, message: 'Database error: ' + dbErr.message });
@@ -293,7 +329,20 @@ app.get('/api/admin/auth/primary', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ success: false, message: 'No token' });
     jwt.verify(token, JWT_SECRET);
-    res.json({ success: true, data: [] });
+    
+    let certifications = [];
+    
+    // 尝试从MongoDB获取认证数据
+    if (mongoConnected) {
+      try {
+        certifications = await Certification.find({ type: 'primary' }).lean();
+        console.log(`✅ 从MongoDB获取了 ${certifications.length} 条初级认证记录`);
+      } catch (dbErr) {
+        console.error('❌ MongoDB查询错误:', dbErr.message);
+      }
+    }
+    
+    res.json({ success: true, data: certifications });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -305,7 +354,20 @@ app.get('/api/admin/auth/advanced', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ success: false, message: 'No token' });
     jwt.verify(token, JWT_SECRET);
-    res.json({ success: true, data: [] });
+    
+    let certifications = [];
+    
+    // 尝试从MongoDB获取认证数据
+    if (mongoConnected) {
+      try {
+        certifications = await Certification.find({ type: 'advanced' }).lean();
+        console.log(`✅ 从MongoDB获取了 ${certifications.length} 条高级认证记录`);
+      } catch (dbErr) {
+        console.error('❌ MongoDB查询错误:', dbErr.message);
+      }
+    }
+    
+    res.json({ success: true, data: certifications });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
