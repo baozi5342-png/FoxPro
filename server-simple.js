@@ -260,6 +260,52 @@ app.get('/api/auth/profile', async (req, res) => {
   }
 });
 
+// 获取用户认证状态
+app.get('/api/account/verification-status', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'No token' });
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    let primaryStatus = 'pending';
+    let advancedStatus = 'pending';
+    
+    // 尝试从MongoDB获取用户的认证状态
+    if (mongoConnected) {
+      try {
+        const primaryCert = await Certification.findOne({ userId: decoded.id, type: 'primary' }).lean();
+        const advancedCert = await Certification.findOne({ userId: decoded.id, type: 'advanced' }).lean();
+        
+        if (primaryCert) primaryStatus = primaryCert.status;
+        if (advancedCert) advancedStatus = advancedCert.status;
+        
+        console.log(`✅ 从MongoDB获取用户 ${decoded.username} 的认证状态: ${primaryStatus}/${advancedStatus}`);
+      } catch (dbErr) {
+        console.error('❌ MongoDB查询错误:', dbErr.message);
+      }
+    }
+    
+    // 如果MongoDB失败，从内存查询
+    if (primaryStatus === 'pending' || advancedStatus === 'pending') {
+      Object.values(inMemoryCertifications).forEach(cert => {
+        if (cert.userId === decoded.id) {
+          if (cert.type === 'primary') primaryStatus = cert.status;
+          if (cert.type === 'advanced') advancedStatus = cert.status;
+        }
+      });
+    }
+    
+    res.json({
+      success: true,
+      primary: primaryStatus,
+      advanced: advancedStatus
+    });
+  } catch (error) {
+    console.error('❌ /api/account/verification-status 错误:', error);
+    res.status(401).json({ success: false, message: 'Invalid token' });
+  }
+
 // 根路由 - 返回首页
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
