@@ -3,10 +3,22 @@ services:
     name: foxpro
     env: node
     plan: free
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: npm install --legacy-peer-deps
+    startCommand: node server-production.js
     envVars:
       - key: NODE_ENV
         value: production
+      - key: JWT_SECRET
+        value: foxpro-secret-key-2026
+      - key: MONGODB_URI
+        fromDatabase:
+          name: foxpro
+          property: connectionString
       - key: npm_config_build_from_source
         value: "true"
+
+databases:
+  - name: foxpro
+    databaseName: foxpro
+    user: root
+    ipAllowList: []
