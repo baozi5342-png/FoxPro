@@ -3,9 +3,15 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const path = require('path');
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'foxpro-secret-key-2026';
+
+// ============ 中间件 ============
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname))); // 提供静态文件
 
 // ============ MongoDB 连接 ============
 const getMongoDBURL = () => {
@@ -22,10 +28,7 @@ const getMongoDBURL = () => {
 async function connectMongoDB() {
   try {
     const mongoURL = getMongoDBURL();
-    await mongoose.connect(mongoURL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(mongoURL);
     console.log('✅ MongoDB 连接成功');
     return true;
   } catch (err) {
@@ -49,10 +52,6 @@ const userSchema = new mongoose.Schema({
 }, { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
-
-// 中间件
-app.use(cors());
-app.use(express.json());
 
 // 调试日志中间件
 app.use((req, res, next) => {
@@ -164,6 +163,11 @@ app.get('/api/auth/profile', async (req, res) => {
   } catch (error) {
     res.status(401).json({ success: false, message: 'Invalid token' });
   }
+});
+
+// 根路由 - 返回首页
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // 健康检查
