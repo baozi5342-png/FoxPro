@@ -288,6 +288,60 @@ app.get('/api/admin/auth/advanced', async (req, res) => {
 // ============ 交易管理 ============
 
 // 秒合约配置
+app.get('/api/quick-contract/config', async (req, res) => {
+  try {
+    res.json({ success: true, data: {
+      enabled: true, minAmount: 10, maxAmount: 10000, duration: 60, profitRate: 80
+    }});
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 秒合约下单
+app.post('/api/quick-contract/place', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'No token' });
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { symbol, direction, seconds, amount } = req.body;
+    
+    if (!symbol || !direction || !seconds || !amount) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+    
+    // 生成交易ID
+    const tradeId = 'trade_' + Math.floor(100000 + Math.random() * 900000);
+    
+    // 模拟随机结果 (50% 赚钱, 50% 亏钱)
+    const isWin = Math.random() > 0.5;
+    const profit = isWin ? amount * 0.8 : -amount;
+    
+    console.log(`[Quick Contract] ${decoded.username} 下单: ${symbol} ${direction} ${seconds}s 金额${amount}`);
+    
+    res.json({
+      success: true,
+      data: {
+        tradeId: tradeId,
+        symbol: symbol,
+        direction: direction,
+        amount: amount,
+        entryPrice: Math.random() * 50000 + 30000,
+        currentPrice: Math.random() * 50000 + 30000,
+        profit: profit,
+        isWin: isWin,
+        duration: seconds,
+        createdAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('❌ Quick contract error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Order placement failed' });
+  }
+});
+
+// 秒合约配置
 app.get('/api/admin/quick-contract/config', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
