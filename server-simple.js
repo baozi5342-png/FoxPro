@@ -187,6 +187,77 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
+// ============ 后台管理API ============
+
+// 获取所有用户（后台专用）
+app.get('/api/admin/users', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'No token provided' });
+    }
+
+    // 验证token
+    try {
+      jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+
+    // 获取所有用户
+    const users = await User.find({}, { password: 0 }).lean();
+
+    res.json({
+      success: true,
+      data: users.map(user => ({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        country: user.country,
+        status: user.status,
+        createdAt: user.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Failed to load users:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 获取统计数据（后台仪表盘）
+app.get('/api/admin/stats', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'No token provided' });
+    }
+
+    // 验证token
+    try {
+      jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+
+    // 获取统计数据
+    const totalUsers = await User.countDocuments();
+
+    res.json({
+      success: true,
+      data: {
+        totalUsers: totalUsers,
+        totalOrders: 0,
+        pendingVerifications: 0,
+        totalRevenue: 0
+      }
+    });
+  } catch (error) {
+    console.error('Failed to load stats:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ============ 启动服务器 ============
 const PORT = process.env.PORT || 3000;
 
