@@ -103,6 +103,201 @@ app.get('/api/user/profile', (req, res) => {
   });
 });
 
+// ============ 后台管理API ============
+
+// 统计信息
+app.get('/api/admin/stats', (req, res) => {
+  res.json({
+    success: true,
+    stats: {
+      totalUsers: 1250,
+      activeUsers: 580,
+      totalVolume: 5250000,
+      totalTransactions: 12580
+    }
+  });
+});
+
+// 用户列表
+app.get('/api/admin/users', (req, res) => {
+  res.json({
+    success: true,
+    users: [
+      { id: 1, username: 'user1', email: 'user1@foxpro.com', registeredAt: '2025-12-01', status: 'active' },
+      { id: 2, username: 'user2', email: 'user2@foxpro.com', registeredAt: '2025-12-02', status: 'active' },
+      { id: 3, username: 'user3', email: 'user3@foxpro.com', registeredAt: '2025-12-03', status: 'inactive' }
+    ],
+    total: 1250
+  });
+});
+
+// 初级认证审核列表
+app.get('/api/admin/auth/primary', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { id: 1, username: 'user4', status: '待审核', submittedAt: '2025-12-28' },
+      { id: 2, username: 'user5', status: '待审核', submittedAt: '2025-12-27' }
+    ]
+  });
+});
+
+// 高级认证审核列表
+app.get('/api/admin/auth/advanced', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { id: 1, username: 'user6', status: '待审核', submittedAt: '2025-12-28' }
+    ]
+  });
+});
+
+// 秒合约配置
+app.get('/api/admin/quick-contract/config', (req, res) => {
+  res.json({
+    success: true,
+    config: {
+      minBet: 1,
+      maxBet: 10000,
+      duration: 60,
+      returnRate: 0.85
+    }
+  });
+});
+
+// 秒合约交易列表
+app.get('/api/admin/quick-contract/trades', (req, res) => {
+  res.json({
+    success: true,
+    trades: [
+      { id: 1, symbol: 'BTC', amount: 100, result: 'win', createdAt: '2025-12-28' },
+      { id: 2, symbol: 'ETH', amount: 50, result: 'loss', createdAt: '2025-12-28' }
+    ]
+  });
+});
+
+// 秒合约交易详情
+app.get('/api/admin/quick-contract/trades/:tradeId', (req, res) => {
+  res.json({
+    success: true,
+    trade: {
+      id: req.params.tradeId,
+      symbol: 'BTC',
+      amount: 100,
+      result: 'win',
+      createdAt: '2025-12-28',
+      details: 'Trade details...'
+    }
+  });
+});
+
+// 认证审核通过
+app.post('/api/admin/auth/approve', (req, res) => {
+  res.json({
+    success: true,
+    message: '认证已通过'
+  });
+});
+
+// 认证审核拒绝
+app.post('/api/admin/auth/reject', (req, res) => {
+  res.json({
+    success: true,
+    message: '认证已拒绝'
+  });
+});
+
+// 理财产品列表
+app.get('/api/wealth/products', (req, res) => {
+  res.json({
+    success: true,
+    products: [
+      { id: 1, name: '30天低风险产品', rate: 8.5, minAmount: 100 },
+      { id: 2, name: '90天中等产品', rate: 12.0, minAmount: 500 }
+    ]
+  });
+});
+
+// 兑换记录
+app.get('/api/admin/exchange/records', (req, res) => {
+  res.json({
+    success: true,
+    records: [
+      { id: 1, userId: 1, from: 'BTC', to: 'USDT', amount: 0.5, createdAt: '2025-12-28' }
+    ]
+  });
+});
+
+// 用户兑换记录
+app.get('/api/admin/exchange/user/:userId', (req, res) => {
+  res.json({
+    success: true,
+    records: [
+      { id: 1, from: 'BTC', to: 'USDT', amount: 0.5, createdAt: '2025-12-28' }
+    ]
+  });
+});
+
+// 充值配置
+app.get('/api/api/admin/recharge/config', (req, res) => {
+  res.json({
+    success: true,
+    config: {
+      minRecharge: 10,
+      maxRecharge: 100000
+    }
+  });
+});
+
+// 更新充值配置
+app.post('/api/api/admin/recharge/config', (req, res) => {
+  res.json({
+    success: true,
+    message: '配置已更新'
+  });
+});
+
+// 币种充值配置
+app.get('/api/api/admin/recharge/config/:coin', (req, res) => {
+  res.json({
+    success: true,
+    config: {
+      coin: req.params.coin,
+      minRecharge: 10,
+      maxRecharge: 100000,
+      fee: 0.01
+    }
+  });
+});
+
+// 更新币种充值配置
+app.post('/api/api/admin/recharge/config/:coin', (req, res) => {
+  res.json({
+    success: true,
+    message: `${req.params.coin}配置已更新`
+  });
+});
+
+// 充值订单
+app.get('/api/api/admin/recharge/orders', (req, res) => {
+  res.json({
+    success: true,
+    orders: [
+      { id: 1, userId: 1, coin: 'BTC', amount: 0.1, status: 'completed', createdAt: '2025-12-28' }
+    ]
+  });
+});
+
+// 提现记录
+app.get('/api/admin/withdraw/records', (req, res) => {
+  res.json({
+    success: true,
+    records: [
+      { id: 1, userId: 1, coin: 'BTC', amount: 0.05, status: 'pending', createdAt: '2025-12-28' }
+    ]
+  });
+});
+
 // 前端页面路由
 const pages = [
   'index', 'login', 'register', 'account', 'market', 'trade', 'exchange', 
