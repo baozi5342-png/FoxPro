@@ -234,7 +234,7 @@ app.get('/api/admin/users', (req, res) => {
 
   res.json({
     success: true,
-    users: users,
+    data: users,
     total: users.length
   });
 });
