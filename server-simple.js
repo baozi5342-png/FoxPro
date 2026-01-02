@@ -227,9 +227,34 @@ app.get('/api/admin/users', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ success: false, message: 'No token' });
-    jwt.verify(token, JWT_SECRET);
+    
+    try {
+      jwt.verify(token, JWT_SECRET);
+    } catch (e) {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
 
-    const users = await User.find({}, { password: 0 }).lean();
+    let users = [];
+    
+    // 尝试从MongoDB获取用户
+    if (mongoConnected) {
+      try {
+        users = await User.find({}, { password: 0 }).lean();
+        console.log(`✅ 从MongoDB获取了 ${users.length} 个用户`);
+      } catch (dbErr) {
+        console.error('❌ MongoDB查询错误:', dbErr.message);
+      }
+    }
+    
+    // 如果MongoDB为空或失败，检查内存存储
+    if (users.length === 0 && Object.keys(inMemoryUsers).length > 0) {
+      users = Object.values(inMemoryUsers).map(u => ({
+        id: u.id, username: u.username, email: u.email,
+        phone: u.phone, country: u.country, status: u.status, createdAt: u.createdAt
+      }));
+      console.log(`✅ 从内存存储获取了 ${users.length} 个用户`);
+    }
+    
     res.json({
       success: true,
       data: users.map(u => ({
@@ -238,6 +263,7 @@ app.get('/api/admin/users', async (req, res) => {
       }))
     });
   } catch (error) {
+    console.error('❌ /api/admin/users 错误:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
