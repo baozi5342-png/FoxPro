@@ -5,6 +5,8 @@ const jwt = require("jsonwebtoken");
 
 // 导入MongoDB配置
 const { connectMongoDB, DatabaseAdapter } = require("./mongodb-config");
+// 导入临时数据存储
+const tempDataStore = require("./temp-datastore");
 
 const app = express();
 
@@ -3512,60 +3514,56 @@ app.post("/api/auth/register", (req, res) => {
   }
 
   try {
-    // 检查用户名是否已存在
-    const existingUser = db.prepare("SELECT * FROM users WHERE username = ?").get(username.toLowerCase());
+    // 使用临时存储检查用户是否存在
+    const existingUser = tempDataStore.getUser(username.toLowerCase());
     if (existingUser) {
       console.log('[Register] 用户名已存在:', username);
       return res.status(400).json({ success: false, message: "Username already exists" });
     }
 
-    // 检查邮箱是否已存在
-    const existingEmail = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
-    if (existingEmail) {
-      console.log('[Register] 邮箱已注册:', email);
-      return res.status(400).json({ success: false, message: "Email already registered" });
-    }
-
-    // 检查手机号是否已存在
-    const existingPhone = db.prepare("SELECT * FROM users WHERE phone = ?").get(phone);
-    if (existingPhone) {
-      console.log('[Register] 手机号已注册:', phone);
-      return res.status(400).json({ success: false, message: "Phone number already registered" });
-    }
-
-    // 创建新用户 - 生成6位数的用户ID
+    // 创建新用户
     const userId = "user_" + String(Math.floor(100000 + Math.random() * 900000));
     const now = new Date().toISOString();
 
-    console.log('[Register] 准备创建用户:', userId);
+    const newUser = {
+      id: userId,
+      username: username.toLowerCase(),
+      email: email,
+      password: password,
+      phone: phone,
+      country: "CN",
+      status: "active",
+      createdAt: now,
+      updatedAt: now
+    };
 
-    // 插入用户到数据库
-    db.prepare(`
-      INSERT INTO users (id, username, email, password, phone, country, status, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
-    `).run(userId, username.toLowerCase(), email, password, phone, "CN", now, now);
+    tempDataStore.addUser(newUser);
+    console.log('[Register] 用户创建成功:', userId);
 
-    console.log('[Register] 用户创建成功');
+    // 生成JWT Token
+    const token = jwt.sign({
+      id: userId,
+      username: username.toLowerCase(),
+      email: email,
+      isAdmin: 0
+    }, JWT_SECRET, { expiresIn: '7d' });
 
-    // 为新用户创建资产记录（初始为空）
-    const emptyBalances = JSON.stringify({
-      BTC: 0,
-      ETH: 0,
-      USDT: 0,
-      SOL: 0,
-      ADA: 0,
-      XRP: 0,
-      DOGE: 0,
-      LTC: 0
+    res.json({
+      success: true,
+      message: "Registration successful",
+      user: {
+        id: userId,
+        username: username.toLowerCase(),
+        email: email,
+        phone: phone
+      },
+      token: token
     });
-
-    const assetId = "asset_" + String(Math.floor(100000 + Math.random() * 900000));
-    db.prepare(`
-      INSERT INTO user_assets (id, userId, balances, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(assetId, userId, emptyBalances, now, now);
-
-    console.log('[Register] 资产记录创建成功');
+  } catch (error) {
+    console.error('[Register] 错误:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
     // 也添加到内存存储（保持兼容性）
     const newUser = {
