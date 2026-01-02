@@ -374,12 +374,12 @@
         // 保存 token 和用户信息
         localStorage.setItem('userToken', data.token);
         localStorage.setItem('token', data.token);
-        localStorage.setItem('userId', data.userId);
-        localStorage.setItem('username', data.username);
-        localStorage.setItem('userEmail', data.email);
+        localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('username', data.user.username);
+        localStorage.setItem('userEmail', data.user.email);
         localStorage.setItem('isAdmin', data.isAdmin || false);
-        localStorage.setItem('email', data.email);
-        localStorage.setItem('userInfo', JSON.stringify(data));
+        localStorage.setItem('email', data.user.email);
+        localStorage.setItem('userInfo', JSON.stringify(data.user));
 
         document.getElementById('successMsg').textContent = 'Login successful! Redirecting...';
         document.getElementById('successMsg').classList.add('show');
