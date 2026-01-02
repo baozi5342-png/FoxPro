@@ -81,6 +81,11 @@ a {
   gap: 6px;
   align-self: center;
   flex-shrink: 0;
+  margin-left: auto;
+}
+
+.topbar-right #supportLink {
+  margin-right: 24px !important;
 }
 
 .topbar-auth {
