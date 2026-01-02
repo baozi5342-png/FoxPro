@@ -3565,36 +3565,6 @@ app.post("/api/auth/register", (req, res) => {
   }
 });
 
-    // 也添加到内存存储（保持兼容性）
-    const newUser = {
-      userId,
-      username,
-      email,
-      phone,
-      password,
-      createdAt: new Date(),
-      balance: 10000,
-    };
-    users[username.toLowerCase()] = newUser;
-
-    console.log('[Register] 注册完成，返回成功响应');
-
-    res.status(201).json({
-      success: true,
-      message: "Registration successful",
-      userId,
-      username,
-      email,
-    });
-  } catch (err) {
-    console.error("[Register] 注册错误:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Internal server error: " + err.message 
-    });
-  }
-});
-
 /**
  * 用户登录
  */
