@@ -11,9 +11,9 @@ const API_CONFIG = {
   // Render 部署
   'foxpro-yv69.onrender.com': 'https://foxpro-yv69.onrender.com/api',
   
-  // 生产环境 - foxprocs.top
-  'foxprocs.top': 'https://foxprocs.top/api',
-  'www.foxprocs.top': 'https://foxprocs.top/api',
+  // 生产环境 - foxprocs.top 和 www.foxprocs.top
+  'foxprocs.top': 'https://www.foxprocs.top/api',
+  'www.foxprocs.top': 'https://www.foxprocs.top/api',
 };
 
 // 获取 API 基础 URL
