@@ -141,7 +141,20 @@
     }
 
     .section.active {
-      display: block;
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 30px;
+      align-items: start;
+    }
+
+    /* 如果只有表格，跨越整个宽度 */
+    .section.active > .table-container:only-of-type {
+      grid-column: 1 / -1;
+    }
+
+    /* 如果只有一个 card，跨越整个宽度 */
+    .section.active > .card:only-of-type {
+      grid-column: 1 / -1;
     }
 
     .section-title {
@@ -149,6 +162,7 @@
       font-weight: 700;
       margin-bottom: 30px;
       color: var(--text);
+      grid-column: 1 / -1;
     }
 
     /* Cards and Forms */
@@ -158,6 +172,7 @@
       border-radius: 12px;
       padding: 24px;
       margin-bottom: 20px;
+      grid-column: 1;
     }
 
     .card-title {
@@ -210,6 +225,7 @@
       border-radius: 12px;
       overflow: hidden;
       margin-bottom: 20px;
+      grid-column: 2;
     }
 
     .table-header {
