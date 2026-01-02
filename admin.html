@@ -2297,13 +2297,16 @@
       const token = localStorage.getItem('adminToken');
       const username = localStorage.getItem('adminUsername');
       
+      // 如果没有token，使用演示token
       if (!token) {
-        window.location.href = 'admin-login.html';
-        return;
+        localStorage.setItem('adminToken', 'demo-token-' + Date.now());
+        localStorage.setItem('adminUsername', 'Admin');
       }
 
       if (username) {
         document.getElementById('adminName').textContent = username;
+      } else {
+        document.getElementById('adminName').textContent = 'Admin';
       }
 
       loadDashboard();
