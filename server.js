@@ -1,9 +1,11 @@
 const express = require("express");
 const cors = require("cors");
-// 使用内存数据库以兼容Render（生产环境应使用MongoDB）
-const Database = process.env.NODE_ENV === 'production' ? require("./memory-db") : require("better-sqlite3");
 const path = require("path");
 const jwt = require("jsonwebtoken");
+
+// 导入MongoDB配置
+const { connectMongoDB, DatabaseAdapter } = require("./mongodb-config");
+
 const app = express();
 
 // JWT密钥
@@ -23,20 +25,21 @@ app.use((req, res, next) => {
 // 先处理所有 /api 路由，再处理静态文件
 // 这样确保 API 请求不会被静态文件处理器拦截
 
-// 初始化 数据库
-const dbPath = path.join(__dirname, "foxpro.db");
-let db;
+// 初始化 MongoDB 数据库
+let db = new DatabaseAdapter(); // 兼容层对象
 
-if (process.env.NODE_ENV === 'production') {
-  // 生产环境使用内存数据库
-  console.log('⚠️  使用临时内存数据库（Render环境）');
-  console.log('💡 提示：请配置MONGODB_URI以使用永久数据库');
-  db = new Database(); // 内存数据库
-} else {
-  // 本地开发环境使用SQLite
-  db = new Database(dbPath);
-  db.pragma("journal_mode = WAL");
-}
+// MongoDB连接（异步）
+let mongoConnected = false;
+connectMongoDB().then(success => {
+  mongoConnected = success;
+  if (success) {
+    console.log('MongoDB 已连接，应用正常运行');
+  } else {
+    console.warn('⚠️  MongoDB 连接失败，应用将以模拟数据运行');
+  }
+}).catch(err => {
+  console.error('MongoDB 连接错误:', err);
+});
 
 // 创建用户表
 db.exec(`
