@@ -1,0 +1,7 @@
+foxpro.db
+foxpro.db-shm
+foxpro.db-wal
+node_modules
+.git
+.env.local
+.env.*.local

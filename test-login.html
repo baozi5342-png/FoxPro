@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Login</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #1a1a1a; color: #fff; }
+    .test-box { background: #2a2a2a; padding: 20px; margin: 10px 0; border-radius: 5px; }
+    input { padding: 8px; margin: 5px 0; width: 200px; }
+    button { padding: 8px 15px; margin: 5px; }
+    .log { background: #1a1a1a; padding: 10px; margin-top: 10px; max-height: 300px; overflow-y: auto; }
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <h1>登录测试</h1>
+  
+  <div class="test-box">
+    <h3>1. 测试 API 连接</h3>
+    <button onclick="testConnection()">连接测试</button>
+  </div>
+
+  <div class="test-box">
+    <h3>2. 测试登录 API</h3>
+    <input type="text" id="username" placeholder="用户名" value="newuser2026">
+    <input type="password" id="password" placeholder="密码" value="test123456">
+    <button onclick="testLogin()">登录</button>
+  </div>
+
+  <div class="test-box">
+    <h3>3. 测试注册 API</h3>
+    <input type="text" id="regUsername" placeholder="用户名">
+    <input type="email" id="regEmail" placeholder="邮箱">
+    <input type="tel" id="regPhone" placeholder="手机号">
+    <input type="password" id="regPassword" placeholder="密码">
+    <button onclick="testRegister()">注册</button>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <script>
+    const API_BASE = `${window.location.protocol}//${window.location.host}/api`;
+    
+    function log(message, type = 'info') {
+      const logEl = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      const color = type === 'success' ? 'green' : type === 'error' ? 'red' : 'gray';
+      const html = `<div style="color: ${color};">[${time}] ${message}</div>`;
+      logEl.innerHTML += html;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    async function testConnection() {
+      log('测试连接...', 'info');
+      try {
+        const response = await fetch(`${API_BASE}/auth/verify`, {
+          method: 'GET',
+          headers: { 'Authorization': 'Bearer test-token' }
+        });
+        log(`连接成功，状态码：${response.status}`, 'success');
+      } catch (error) {
+        log(`连接失败：${error.message}`, 'error');
+      }
+    }
+
+    async function testLogin() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      log(`尝试登录：${username}`, 'info');
+      log(`请求 URL：${API_BASE}/auth/login`, 'info');
+      
+      try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username, password })
+        });
+        
+        log(`状态码：${response.status}`, 'info');
+        log(`状态文本：${response.statusText}`, 'info');
+        
+        const data = await response.json();
+        log(`响应数据：${JSON.stringify(data)}`, response.ok ? 'success' : 'error');
+        
+        if (response.ok) {
+          localStorage.setItem('token', data.token);
+          log(`Token 已保存`, 'success');
+        }
+      } catch (error) {
+        log(`错误：${error.message}`, 'error');
+        log(`错误堆栈：${error.stack}`, 'error');
+      }
+    }
+
+    async function testRegister() {
+      const username = document.getElementById('regUsername').value;
+      const email = document.getElementById('regEmail').value;
+      const phone = document.getElementById('regPhone').value;
+      const password = document.getElementById('regPassword').value;
+      
+      log(`尝试注册：${username}`, 'info');
+      
+      try {
+        const response = await fetch(`${API_BASE}/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username, email, phone, password })
+        });
+        
+        log(`状态码：${response.status}`, 'info');
+        const data = await response.json();
+        log(`响应：${JSON.stringify(data)}`, response.ok ? 'success' : 'error');
+      } catch (error) {
+        log(`错误：${error.message}`, 'error');
+      }
+    }
+
+    // 页面加载时自动测试连接
+    window.addEventListener('load', () => {
+      log('页面已加载');
+      log(`API_BASE: ${API_BASE}`);
+    });
+  </script>
+</body>
+</html>

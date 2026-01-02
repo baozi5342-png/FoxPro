@@ -7409,9 +7409,10 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-// 仅在非 Vercel 环境中启动监听
-if (!module.parent && process.env.VERCEL !== '1') {
-  app.listen(PORT, '0.0.0.0', async () => {
+// 在本地或Render/生产环境中启动监听
+const isProduction = process.env.NODE_ENV === 'production';
+if (require.main === module || isProduction) {
+  const server = app.listen(PORT, '0.0.0.0', async () => {
     try {
       await fetchRealPrices();
     } catch (err) {

@@ -263,64 +263,92 @@
       <!-- Deposit Form -->
       <div id="deposit-tab" style="display: block;">
         <div class="form-card">
-          <h3>Select Cryptocurrency</h3>
+          <h3>💰 选择充值币种</h3>
           <div class="form-group">
-            <label>Cryptocurrency</label>
+            <label>币种</label>
             <select id="coinSelect" onchange="updateCoinInfo()">
-              <option value="BTC">Bitcoin (BTC)</option>
-              <option value="ETH">Ethereum (ETH)</option>
-              <option value="USDT">Tether (USDT)</option>
-              <option value="SOL">Solana (SOL)</option>
-              <option value="ADA">Cardano (ADA)</option>
+              <option value="">加载中...</option>
             </select>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Network</label>
-              <select id="networkSelect">
-                <option value="mainnet">Mainnet</option>
-                <option value="bsc">BSC (BEP-20)</option>
-                <option value="polygon">Polygon</option>
-              </select>
+              <label>充值网络</label>
+              <input type="text" id="networkDisplay" disabled value="-" style="background: var(--panel-2); cursor: not-allowed;" />
             </div>
             <div class="form-group">
-              <label>Minimum Deposit</label>
-              <input type="text" id="minDeposit" disabled value="0.001 BTC" />
+              <label>最小充值额</label>
+              <input type="text" id="minDeposit" disabled value="-" style="background: var(--panel-2); cursor: not-allowed;" />
             </div>
           </div>
         </div>
 
-        <!-- QR Code and Address and Address -->
+        <!-- 二维码和地址 -->
         <div class="form-card">
-          <h3>Deposit Address</h3>
-          <div class="qr-container">
-            <div class="qr-code">
-              [QR Code]<br/>Scan to deposit
+          <h3>📱 充值地址</h3>
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div id="qrCodeContainer" style="display: inline-block; padding: 20px; background: var(--panel-2); border-radius: 8px; min-width: 250px;">
+              <img id="qrCode" src="" alt="QR Code" style="width: 200px; height: 200px; border: 2px solid var(--border); border-radius: 4px; display: none;" />
+              <div id="qrPlaceholder" style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; color: var(--muted);">选择币种显示二维码</div>
             </div>
           </div>
           <div class="form-group">
-            <label>Your Deposit Address</label>
-            <div class="address-box" id="depositAddress">
-              1A1z7agoat2Rt7a3SDVgZzymqjcjJrHeP
+            <label>充值钱包地址</label>
+            <div style="display: flex; gap: 10px;">
+              <input type="text" id="depositAddress" readonly value="-" style="background: var(--panel-2); cursor: not-allowed; flex: 1; word-break: break-all;" />
+              <button class="copy-btn" onclick="copyAddress()" style="padding: 8px 16px; min-width: 100px;">📋 复制</button>
             </div>
-            <button class="copy-btn" onclick="copyAddress()">📋 Copy Address</button>
           </div>
         </div>
 
-        <!-- Important Notes -->
+        <!-- 充值金额 -->
         <div class="form-card">
-          <h3>⚠️ Important Notes</h3>
+          <h3>📊 充值数量</h3>
+          <div class="form-group">
+            <label>充值金额</label>
+            <input type="number" id="rechargeAmount" placeholder="输入充值数量" step="0.00000001" min="0" />
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
+            <button class="quick-amount-btn" onclick="setRechargeAmount(0.1)">0.1</button>
+            <button class="quick-amount-btn" onclick="setRechargeAmount(0.5)">0.5</button>
+            <button class="quick-amount-btn" onclick="setRechargeAmount(1)">1.0</button>
+            <button class="quick-amount-btn" onclick="setRechargeAmount(5)">5.0</button>
+          </div>
+        </div>
+
+        <!-- 提交充值 -->
+        <div class="form-card">
+          <h3>✅ 确认充值</h3>
+          <div style="background: var(--panel-2); padding: 15px; border-radius: 6px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span style="color: var(--muted);">币种</span>
+              <span style="color: var(--text); font-weight: 600;" id="confirmCoin">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span style="color: var(--muted);">金额</span>
+              <span style="color: var(--text); font-weight: 600;" id="confirmAmount">0</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--muted);">网络</span>
+              <span style="color: var(--text); font-weight: 600;" id="confirmNetwork">-</span>
+            </div>
+          </div>
+          <button class="submit-btn" onclick="submitRecharge()">✅ 提交充值申请</button>
+        </div>
+
+        <!-- 重要提示 -->
+        <div class="form-card">
+          <h3>⚠️ 重要提示</h3>
           <div class="deposit-info">
-            <strong>Choose the correct network:</strong> Using the wrong network may result in permanent loss of funds. Make sure to select the same network where you're sending from.
+            <strong>选择正确的网络：</strong> 使用错误的网络可能导致资金永久丧失。请确保选择与发送地址相同的网络。
           </div>
           <div class="deposit-info">
-            <strong>Minimum deposit amount:</strong> <span id="minAmount">0.001 BTC</span>
+            <strong>最小充值金额：</strong> <span id="minAmountDisplay">-</span>
           </div>
           <div class="deposit-info">
-            <strong>Confirmation time:</strong> Usually arrives within 10-30 minutes after blockchain confirmation.
+            <strong>到账时间：</strong> 通常在区块链确认后 10-30 分钟内到账。
           </div>
           <div class="deposit-info">
-            <strong>Questions?</strong> Contact our <a href="service.html" style="color: var(--primary); text-decoration: underline;">Customer Service</a>
+            <strong>有问题？</strong> 请联系我们的<a href="customer-support.html" style="color: var(--primary); text-decoration: underline;">客服中心</a>
           </div>
         </div>
       </div>
@@ -328,40 +356,12 @@
       <!-- Deposit History -->
       <div id="history-tab" style="display: none;">
         <div class="form-card">
-          <h3>Deposit Records</h3>
-          <div class="deposit-list">
-            <div class="deposit-item">
-              <div class="deposit-item-left">
-                <div class="deposit-item-title">Bitcoin (BTC) - Mainnet</div>
-                <div class="deposit-item-time">2025-12-28 14:32:15</div>
-              </div>
-              <div class="deposit-item-amount">
-                <div class="deposit-item-value">+0.05 BTC</div>
-                <span class="deposit-status success">CONFIRMED</span>
-              </div>
-            </div>
-
-            <div class="deposit-item">
-              <div class="deposit-item-left">
-                <div class="deposit-item-title">Ethereum (ETH) - Mainnet</div>
-                <div class="deposit-item-time">2025-12-27 09:15:42</div>
-              </div>
-              <div class="deposit-item-amount">
-                <div class="deposit-item-value">+1.0 ETH</div>
-                <span class="deposit-status confirmed">CONFIRMING</span>
-              </div>
-            </div>
-
-            <div class="deposit-item">
-              <div class="deposit-item-left">
-                <div class="deposit-item-title">Tether (USDT) - BSC</div>
-                <div class="deposit-item-time">2025-12-26 16:48:20</div>
-              </div>
-              <div class="deposit-item-amount">
-                <div class="deposit-item-value">+500 USDT</div>
-                <span class="deposit-status success">CONFIRMED</span>
-              </div>
-            </div>
+          <h3>💳 充值记录</h3>
+          <div style="margin-bottom: 15px;">
+            <button class="submit-btn" onclick="loadMyRechargeOrders()" style="background: var(--primary); margin: 0; width: auto; padding: 8px 16px;">🔄 刷新记录</button>
+          </div>
+          <div class="deposit-list" id="rechargeOrdersList">
+            <div style="text-align: center; color: var(--muted); padding: 20px;">加载中...</div>
           </div>
         </div>
       </div>
@@ -370,6 +370,10 @@
 
     <script src="auth.js"></script>
     <script>
+      const API_BASE = 'http://localhost:3000';
+      let rechargeConfigs = {};
+      let currentConfig = null;
+
       function switchTab(tab) {
         document.querySelectorAll('[id$="-tab"]').forEach(el => el.style.display = 'none');
         document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
@@ -380,27 +384,191 @@
         } else {
           document.getElementById('history-tab').style.display = 'block';
           document.querySelectorAll('.tab')[1].classList.add('active');
+          loadMyRechargeOrders();
+        }
+      }
+
+      async function loadRechargeConfig() {
+        try {
+          const res = await fetch(`${API_BASE}/api/recharge/config`);
+          const data = await res.json();
+          
+          if (data.success && Array.isArray(data.data)) {
+            rechargeConfigs = {};
+            const select = document.getElementById('coinSelect');
+            select.innerHTML = '<option value="">选择币种...</option>';
+            
+            data.data.forEach(config => {
+              rechargeConfigs[config.coin] = config;
+              select.innerHTML += `<option value="${config.coin}">${config.coin}</option>`;
+            });
+          }
+        } catch (err) {
+          console.error('Error loading recharge config:', err);
         }
       }
 
       function updateCoinInfo() {
         const coin = document.getElementById('coinSelect').value;
-        const minAmounts = {
-          'BTC': '0.001 BTC',
-          'ETH': '0.01 ETH',
-          'USDT': '10 USDT',
-          'SOL': '0.1 SOL',
-          'ADA': '1 ADA'
-        };
-        document.getElementById('minDeposit').value = minAmounts[coin];
-        document.getElementById('minAmount').textContent = minAmounts[coin];
+        
+        if (!coin || !rechargeConfigs[coin]) {
+          document.getElementById('networkDisplay').value = '-';
+          document.getElementById('minDeposit').value = '-';
+          document.getElementById('minAmountDisplay').textContent = '-';
+          document.getElementById('confirmCoin').textContent = '-';
+          document.getElementById('confirmNetwork').textContent = '-';
+          document.getElementById('depositAddress').value = '-';
+          document.getElementById('qrCode').style.display = 'none';
+          document.getElementById('qrPlaceholder').style.display = 'flex';
+          currentConfig = null;
+          return;
+        }
+
+        currentConfig = rechargeConfigs[coin];
+        document.getElementById('networkDisplay').value = currentConfig.network;
+        document.getElementById('minDeposit').value = currentConfig.minAmount + ' ' + coin;
+        document.getElementById('minAmountDisplay').textContent = currentConfig.minAmount + ' ' + coin;
+        document.getElementById('confirmCoin').textContent = coin;
+        document.getElementById('confirmNetwork').textContent = currentConfig.network;
+        document.getElementById('depositAddress').value = currentConfig.address;
+        
+        // 显示二维码
+        if (currentConfig.qrCodeUrl) {
+          const qrImg = document.getElementById('qrCode');
+          qrImg.src = currentConfig.qrCodeUrl;
+          qrImg.style.display = 'block';
+          document.getElementById('qrPlaceholder').style.display = 'none';
+        } else {
+          document.getElementById('qrCode').style.display = 'none';
+          document.getElementById('qrPlaceholder').style.display = 'flex';
+        }
       }
 
+      function setRechargeAmount(amount) {
+        document.getElementById('rechargeAmount').value = amount;
+        document.getElementById('confirmAmount').textContent = amount + ' ' + (currentConfig?.coin || '-');
+      }
+
+      document.getElementById('rechargeAmount')?.addEventListener('input', function() {
+        const coin = document.getElementById('coinSelect').value;
+        document.getElementById('confirmAmount').textContent = (this.value || '0') + ' ' + (coin || '-');
+      });
+
       function copyAddress() {
-        const address = document.getElementById('depositAddress').textContent;
-        navigator.clipboard.writeText(address).then(() => {
-          alert('Address copied to clipboard!');
-        });
+        const address = document.getElementById('depositAddress').value;
+        if (address && address !== '-') {
+          navigator.clipboard.writeText(address).then(() => {
+            alert('✓ 地址已复制到剪贴板');
+          }).catch(() => {
+            alert('复制失败，请手动复制');
+          });
+        }
+      }
+
+      async function submitRecharge() {
+        const token = localStorage.getItem('userToken');
+        if (!token) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const coin = document.getElementById('coinSelect').value;
+        const amount = parseFloat(document.getElementById('rechargeAmount').value);
+        const network = currentConfig?.network;
+
+        if (!coin || !amount || amount <= 0) {
+          alert('请选择币种并输入有效的金额');
+          return;
+        }
+
+        if (currentConfig && amount < currentConfig.minAmount) {
+          alert(`最小充值金额为 ${currentConfig.minAmount} ${coin}`);
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/api/recharge/submit`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              coin,
+              amount,
+              network
+            })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            alert(`✓ 充值申请已提交！订单ID: ${data.data.id}`);
+            document.getElementById('rechargeAmount').value = '';
+            document.getElementById('confirmAmount').textContent = '0';
+            setTimeout(() => loadMyRechargeOrders(), 500);
+          } else {
+            alert('✗ 提交失败：' + (data.error || data.message));
+          }
+        } catch (err) {
+          console.error('Error:', err);
+          alert('提交失败，请检查网络连接');
+        }
+      }
+
+      async function loadMyRechargeOrders() {
+        const token = localStorage.getItem('userToken');
+        if (!token) {
+          document.getElementById('rechargeOrdersList').innerHTML = '<div style="text-align: center; color: var(--muted); padding: 20px;">请先登录</div>';
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/api/recharge/myorders`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+
+          const container = document.getElementById('rechargeOrdersList');
+          if (data.success && Array.isArray(data.data)) {
+            if (data.data.length === 0) {
+              container.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 20px;">暂无充值记录</div>';
+            } else {
+              container.innerHTML = data.data.map(order => {
+                let statusClass = '';
+                let statusText = '';
+                if (order.status === 'pending') {
+                  statusClass = 'confirmed';
+                  statusText = '⏳ 待确认';
+                } else if (order.status === 'completed') {
+                  statusClass = 'success';
+                  statusText = '✓ 已完成';
+                } else if (order.status === 'rejected') {
+                  statusClass = 'rejected';
+                  statusText = '✗ 已拒绝';
+                }
+
+                return `
+                  <div class="deposit-item">
+                    <div class="deposit-item-left">
+                      <div class="deposit-item-title">${order.coin} - ${order.network || 'mainnet'}</div>
+                      <div class="deposit-item-time">${new Date(order.createdAt).toLocaleString('zh-CN')}</div>
+                      ${order.txHash ? `<div style="margin-top: 8px; font-size: 11px; color: var(--muted); word-break: break-all;"><strong>TxHash：</strong> ${order.txHash}</div>` : ''}
+                    </div>
+                    <div class="deposit-item-amount">
+                      <div class="deposit-item-value">+${parseFloat(order.amount).toFixed(6)} ${order.coin}</div>
+                      <span class="deposit-status ${statusClass}">${statusText}</span>
+                    </div>
+                  </div>
+                `;
+              }).join('');
+            }
+          } else {
+            container.innerHTML = '<div style="text-align: center; color: var(--danger); padding: 20px;">加载失败</div>';
+          }
+        } catch (err) {
+          console.error('Error loading recharge orders:', err);
+          document.getElementById('rechargeOrdersList').innerHTML = '<div style="text-align: center; color: var(--danger); padding: 20px;">加载失败，请稍后重试</div>';
+        }
       }
 
       function updateAuthDisplay() {
@@ -438,6 +606,7 @@
       document.addEventListener('DOMContentLoaded', () => {
         updateNavbar();
         loadSupportLink();
+        loadRechargeConfig();
         updateAuthDisplay();
         const user = getCurrentUser();
         const loginPrompt = document.getElementById('loginPrompt');

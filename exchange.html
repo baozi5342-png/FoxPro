@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>币种兑换 - FoxPro Exchange</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .exchange-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .exchange-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .exchange-header h1 {
+            font-size: 2.5em;
+            margin: 20px 0;
+            color: #fff;
+            text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .exchange-header p {
+            font-size: 1.1em;
+            color: #aaa;
+        }
+
+        .exchange-main {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .exchange-panel {
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            border-radius: 12px;
+            padding: 30px;
+            border: 1px solid #404050;
+        }
+
+        .exchange-panel h2 {
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            color: #ffd700;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+            color: #aaa;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #404050;
+            border-radius: 8px;
+            background-color: #2d2d44;
+            color: #fff;
+            font-size: 0.95em;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #ffd700;
+            background-color: #3a3a52;
+        }
+
+        .exchange-info {
+            background-color: #2d2d44;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ffd700;
+        }
+
+        .exchange-info .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 8px 0;
+            color: #aaa;
+        }
+
+        .exchange-info .info-label {
+            font-size: 0.95em;
+        }
+
+        .exchange-info .info-value {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .exchange-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .btn-exchange,
+        .btn-reset {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-exchange {
+            background: linear-gradient(135deg, #ffd700 0%, #ffb800 100%);
+            color: #000;
+        }
+
+        .btn-exchange:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-exchange:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-reset {
+            background-color: #3a3a52;
+            color: #aaa;
+        }
+
+        .btn-reset:hover {
+            background-color: #4a4a62;
+        }
+
+        .exchange-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+
+        .records-section {
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            border-radius: 12px;
+            padding: 30px;
+            border: 1px solid #404050;
+        }
+
+        .records-section h2 {
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            color: #ffd700;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .records-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .records-table thead {
+            background-color: #3a3a52;
+            border-bottom: 2px solid #ffd700;
+        }
+
+        .records-table th {
+            padding: 12px;
+            text-align: left;
+            color: #ffd700;
+            font-weight: 600;
+        }
+
+        .records-table td {
+            padding: 12px;
+            border-bottom: 1px solid #404050;
+            color: #aaa;
+        }
+
+        .records-table tbody tr:hover {
+            background-color: #3a3a52;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .status-completed {
+            background-color: #4caf50;
+            color: #fff;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .success-message {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        .error-message {
+            background: linear-gradient(135deg, #f44336 0%, #e53935 100%);
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .refresh-btn {
+            background-color: #3a3a52;
+            color: #ffd700;
+            border: 1px solid #ffd700;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background-color: #4a4a62;
+        }
+
+        .coin-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .coin-option {
+            padding: 10px;
+            background-color: #2d2d44;
+            border: 1px solid #404050;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #aaa;
+        }
+
+        .coin-option:hover {
+            border-color: #ffd700;
+            color: #ffd700;
+        }
+
+        .coin-option.selected {
+            background-color: #ffd700;
+            color: #000;
+            border-color: #ffd700;
+        }
+
+        .exchange-rate-info {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .exchange-rate-field {
+            flex: 1;
+        }
+
+        .exchange-rate-field label {
+            font-size: 0.9em;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .exchange-rate-field input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #404050;
+            border-radius: 6px;
+            background-color: #2d2d44;
+            color: #aaa;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .exchange-main {
+                grid-template-columns: 1fr;
+            }
+
+            .exchange-header h1 {
+                font-size: 1.8em;
+            }
+
+            .records-table {
+                font-size: 0.9em;
+            }
+
+            .records-table th,
+            .records-table td {
+                padding: 8px 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="navbar-container">
+            <div class="logo">FoxPro<span>Exchange</span></div>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">首页</a>
+                <a href="market.html" class="nav-link">行情</a>
+                <a href="trade.html" class="nav-link">交易</a>
+                <a href="assets.html" class="nav-link">资产</a>
+                <a href="exchange.html" class="nav-link active">兑换</a>
+                <a href="lending-products.html" class="nav-link">借贷</a>
+                <a href="account.html" class="nav-link">账户</a>
+                <a href="login.html" class="nav-link" id="logoutBtn">登出</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="exchange-container">
+        <div class="exchange-header">
+            <h1>💱 币种兑换</h1>
+            <p>安全快速的币种兑换服务，实时汇率</p>
+        </div>
+
+        <div id="successMessage" class="success-message"></div>
+        <div id="errorMessage" class="error-message"></div>
+
+        <div class="exchange-main">
+            <div class="exchange-panel">
+                <h2>💰 兑出币种</h2>
+                <div class="form-group">
+                    <label>选择币种</label>
+                    <select id="fromCoin" onchange="updateExchangeRate()">
+                        <option value="">请选择币种</option>
+                        <option value="USDT">USDT - Tether</option>
+                        <option value="BTC">BTC - 比特币</option>
+                        <option value="ETH">ETH - 以太坊</option>
+                        <option value="USDC">USDC - USD Coin</option>
+                        <option value="BNB">BNB - 币安币</option>
+                        <option value="XRP">XRP - 瑞波币</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>兑出数量</label>
+                    <input type="number" id="fromAmount" placeholder="输入数量" step="0.01" min="1" oninput="calculateToAmount()">
+                </div>
+                <div class="exchange-info">
+                    <div class="info-row">
+                        <span class="info-label">可用余额</span>
+                        <span class="info-value" id="availableBalance">0.00</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">手续费 (0.2%)</span>
+                        <span class="info-value" id="fromFee">0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="exchange-panel">
+                <div class="exchange-arrow">⇄</div>
+                <h2>🎁 兑入币种</h2>
+                <div class="form-group">
+                    <label>选择币种</label>
+                    <select id="toCoin" onchange="updateExchangeRate()">
+                        <option value="">请选择币种</option>
+                        <option value="USDT">USDT - Tether</option>
+                        <option value="BTC">BTC - 比特币</option>
+                        <option value="ETH">ETH - 以太坊</option>
+                        <option value="USDC">USDC - USD Coin</option>
+                        <option value="BNB">BNB - 币安币</option>
+                        <option value="XRP">XRP - 瑞波币</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>兑入数量</label>
+                    <input type="number" id="toAmount" placeholder="自动计算" step="0.01" readonly style="background-color: #2a2a3e; cursor: not-allowed;">
+                </div>
+                <div class="exchange-info">
+                    <div class="info-row">
+                        <span class="info-label">汇率</span>
+                        <span class="info-value" id="exchangeRate">1.00</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">您将获得</span>
+                        <span class="info-value" id="youGet">0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="exchange-buttons">
+            <button class="btn-exchange" id="submitBtn" onclick="submitExchange()">💳 立即兑换</button>
+            <button class="btn-reset" onclick="resetForm()">🔄 重置</button>
+        </div>
+
+        <div class="records-section">
+            <h2>
+                📋 我的兑换记录
+                <button class="refresh-btn" onclick="loadMyRecords()">🔄 刷新</button>
+            </h2>
+            <table class="records-table" id="recordsTable">
+                <thead>
+                    <tr>
+                        <th>兑出币种</th>
+                        <th>兑出数量</th>
+                        <th>兑入币种</th>
+                        <th>兑入数量</th>
+                        <th>汇率</th>
+                        <th>手续费</th>
+                        <th>时间</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsBody">
+                    <tr><td colspan="8" class="empty-state">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+        let userAssets = {};
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('userToken');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // 加载用户资产
+            await loadUserAssets();
+            // 加载兑换记录
+            await loadMyRecords();
+
+            // 登出按钮
+            document.getElementById('logoutBtn').addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('userToken');
+                window.location.href = 'login.html';
+            });
+        });
+
+        async function loadUserAssets() {
+            const token = localStorage.getItem('userToken');
+            try {
+                const res = await fetch(`${API_BASE}/api/user/assets`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    userAssets = data.assets || {};
+                    updateAvailableBalance();
+                }
+            } catch (err) {
+                console.error('Error loading assets:', err);
+            }
+        }
+
+        function updateAvailableBalance() {
+            const fromCoin = document.getElementById('fromCoin').value;
+            const balance = userAssets[fromCoin] || 0;
+            document.getElementById('availableBalance').textContent = balance.toFixed(2);
+        }
+
+        function updateExchangeRate() {
+            // 简单的汇率计算 (实际应该从API获取)
+            const fromCoin = document.getElementById('fromCoin').value;
+            const toCoin = document.getElementById('toCoin').value;
+            
+            if (!fromCoin || !toCoin) {
+                document.getElementById('exchangeRate').textContent = '1.00';
+                return;
+            }
+
+            // 模拟汇率 (实际应该动态获取)
+            const rates = {
+                'USDT-BTC': 0.00002,
+                'USDT-ETH': 0.00035,
+                'USDT-USDC': 1.00,
+                'BTC-USDT': 50000,
+                'BTC-ETH': 17.5,
+                'ETH-USDT': 2857,
+                'ETH-BTC': 0.057
+            };
+
+            let rate = rates[`${fromCoin}-${toCoin}`] || 1;
+            if (!rate) {
+                // 反向计算
+                rate = 1 / (rates[`${toCoin}-${fromCoin}`] || 1);
+            }
+
+            document.getElementById('exchangeRate').textContent = rate.toFixed(6);
+            updateAvailableBalance();
+            calculateToAmount();
+        }
+
+        function calculateToAmount() {
+            const fromAmount = parseFloat(document.getElementById('fromAmount').value) || 0;
+            const rate = parseFloat(document.getElementById('exchangeRate').textContent) || 1;
+            const fee = fromAmount * 0.002; // 0.2% 手续费
+            const actualAmount = fromAmount - fee;
+            const toAmount = actualAmount * rate;
+
+            document.getElementById('toAmount').value = toAmount.toFixed(6);
+            document.getElementById('fromFee').textContent = fee.toFixed(6);
+            document.getElementById('youGet').textContent = toAmount.toFixed(6);
+        }
+
+        async function submitExchange() {
+            const token = localStorage.getItem('userToken');
+            const fromCoin = document.getElementById('fromCoin').value;
+            const toCoin = document.getElementById('toCoin').value;
+            const fromAmount = parseFloat(document.getElementById('fromAmount').value);
+            const toAmount = parseFloat(document.getElementById('toAmount').value);
+            const rate = parseFloat(document.getElementById('exchangeRate').textContent);
+
+            // 验证
+            if (!fromCoin || !toCoin) {
+                showError('请选择兑出和兑入币种');
+                return;
+            }
+
+            if (fromAmount <= 0) {
+                showError('请输入有效的兑出数量');
+                return;
+            }
+
+            if (fromCoin === toCoin) {
+                showError('兑出币种和兑入币种不能相同');
+                return;
+            }
+
+            const balance = userAssets[fromCoin] || 0;
+            if (fromAmount > balance) {
+                showError(`${fromCoin} 余额不足`);
+                return;
+            }
+
+            // 禁用按钮
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ 处理中...';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/exchange/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fromCoin,
+                        toCoin,
+                        fromAmount,
+                        toAmount,
+                        exchangeRate: rate
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showSuccess(`✓ 兑换成功！您获得了 ${toAmount.toFixed(6)} ${toCoin}`);
+                    resetForm();
+                    await loadMyRecords();
+                    await loadUserAssets();
+                } else {
+                    showError(data.error || '兑换失败');
+                }
+            } catch (err) {
+                showError('兑换失败：' + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        }
+
+        async function loadMyRecords() {
+            const token = localStorage.getItem('userToken');
+            try {
+                const res = await fetch(`${API_BASE}/api/exchange/myrecords`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+
+                const tbody = document.getElementById('recordsBody');
+                if (data.success && Array.isArray(data.data)) {
+                    if (data.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">暂无兑换记录</td></tr>';
+                    } else {
+                        tbody.innerHTML = data.data.map(record => `
+                            <tr>
+                                <td>${record.fromCoin}</td>
+                                <td>${parseFloat(record.fromAmount).toFixed(6)}</td>
+                                <td>${record.toCoin}</td>
+                                <td>${parseFloat(record.toAmount).toFixed(6)}</td>
+                                <td>${parseFloat(record.exchangeRate).toFixed(6)}</td>
+                                <td>${parseFloat(record.fee).toFixed(6)}</td>
+                                <td>${new Date(record.createdAt).toLocaleString('zh-CN')}</td>
+                                <td><span class="status-badge status-completed">✓ 已完成</span></td>
+                            </tr>
+                        `).join('');
+                    }
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">加载失败</td></tr>';
+                }
+            } catch (err) {
+                console.error('Error loading records:', err);
+                document.getElementById('recordsBody').innerHTML = '<tr><td colspan="8" class="empty-state">加载失败</td></tr>';
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('fromCoin').value = '';
+            document.getElementById('toCoin').value = '';
+            document.getElementById('fromAmount').value = '';
+            document.getElementById('toAmount').value = '';
+            document.getElementById('fromFee').textContent = '0.00';
+            document.getElementById('youGet').textContent = '0.00';
+            document.getElementById('exchangeRate').textContent = '1.00';
+            document.getElementById('availableBalance').textContent = '0.00';
+        }
+
+        function showSuccess(message) {
+            const el = document.getElementById('successMessage');
+            el.textContent = message;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 5000);
+        }
+
+        function showError(message) {
+            const el = document.getElementById('errorMessage');
+            el.textContent = '✗ ' + message;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 5000);
+        }
+    </script>
+</body>
+</html>

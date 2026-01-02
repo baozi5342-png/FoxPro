@@ -202,9 +202,10 @@
         if (data.success) {
           localStorage.setItem('adminToken', data.token);
           localStorage.setItem('adminUser', JSON.stringify(data.user));
+          localStorage.setItem('adminUsername', data.username || 'Admin');
           messageEl.innerHTML = '<div class="message success">登录成功，正在跳转...</div>';
           setTimeout(() => {
-            window.location.href = 'admin.html';
+            window.location.href = 'admin-system.html';
           }, 1000);
         } else {
           messageEl.innerHTML = `<div class="message error">${data.message || '登录失败'}</div>`;

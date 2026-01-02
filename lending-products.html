@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>借贷产品 - FoxPro</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+        
+        .product-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+        
+        .product-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .product-desc {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 16px;
+            min-height: 40px;
+        }
+        
+        .product-details {
+            background: #f5f7fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            color: #666;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .detail-value {
+            color: #333;
+            font-weight: 700;
+            font-size: 16px;
+        }
+        
+        .detail-value.highlight {
+            color: #667eea;
+        }
+        
+        .amount-range {
+            background: #e8eef7;
+            color: #333;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .apply-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .apply-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .apply-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #d1fae5;
+            color: #065f46;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        .status-badge.disabled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .empty-state {
+            background: white;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        
+        .empty-state-title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        
+        .empty-state-text {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .info-banner {
+            background: rgba(255, 255, 255, 0.95);
+            border-left: 4px solid #667eea;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+        
+        .info-banner-title {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .info-banner-text {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 16px 32px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .nav-logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 24px;
+        }
+        
+        .nav-link {
+            color: #666;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover {
+            color: #667eea;
+        }
+        
+        .nav-link.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <div class="nav-header">
+        <div class="nav-logo">💰 FoxPro 借贷</div>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">首页</a>
+            <a href="market.html" class="nav-link">交易</a>
+            <a href="lending-products.html" class="nav-link active">借贷</a>
+            <a href="account.html" class="nav-link">账户</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- 标题 -->
+        <div class="header">
+            <h1>🏦 借贷产品</h1>
+            <p>选择适合您的借贷产品，快速获得资金支持</p>
+        </div>
+        
+        <!-- 信息提示 -->
+        <div class="info-banner">
+            <div class="info-banner-title">✨ 快速借贷</div>
+            <div class="info-banner-text">
+                我们提供多种借贷产品，从小额应急贷到大额创业贷，满足您的不同需求。
+                点击"立即申请"选择您想要的借贷产品，填写申请表单，我们将在24小时内审核您的申请。
+            </div>
+        </div>
+        
+        <!-- 产品网格 -->
+        <div id="productsContainer" class="products-grid">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p style="margin-top: 16px;">加载中...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 申请模态框 -->
+    <div id="applyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">📋 申请借贷</div>
+            
+            <form onsubmit="submitApplication(event)">
+                <div class="form-group">
+                    <label>选择产品</label>
+                    <input type="text" id="selectedProduct" disabled style="background: #f5f5f5;">
+                </div>
+                
+                <div class="form-group">
+                    <label>借贷金额</label>
+                    <input type="number" id="loanAmount" placeholder="请输入借贷金额" min="0" step="0.01" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>借贷期限</label>
+                    <input type="number" id="loanTerm" placeholder="请输入借贷期限" disabled style="background: #f5f5f5;">
+                </div>
+                
+                <div class="form-group">
+                    <label>利率</label>
+                    <input type="number" id="loanRate" placeholder="利率" disabled style="background: #f5f5f5;">
+                </div>
+                
+                <div class="form-group">
+                    <label>预期收益</label>
+                    <input type="text" id="expectedProfit" disabled style="background: #f5f5f5;">
+                </div>
+                
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">✓ 确认申请</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeApplyModal()">✕ 取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        let selectedProductData = null;
+        
+        // 页面加载
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLendingProducts();
+        });
+        
+        // 加载借贷产品
+        async function loadLendingProducts() {
+            try {
+                const response = await fetch(`${API_BASE}/lending/products`);
+                const data = await response.json();
+                
+                if (data.success && Array.isArray(data.data)) {
+                    displayProducts(data.data);
+                } else {
+                    showEmptyState();
+                }
+            } catch (error) {
+                console.error('Failed to load products:', error);
+                showEmptyState('加载失败，请稍后重试');
+            }
+        }
+        
+        // 显示产品
+        function displayProducts(products) {
+            if (products.length === 0) {
+                showEmptyState();
+                return;
+            }
+            
+            const container = document.getElementById('productsContainer');
+            container.innerHTML = products.map(product => `
+                <div class="product-card">
+                    <div class="status-badge ${!product.enabled ? 'disabled' : ''}">
+                        ${product.enabled ? '✓ 可申请' : '✗ 已下架'}
+                    </div>
+                    
+                    <div class="product-name">${product.name}</div>
+                    <div class="product-desc">${product.description || '灵活的借贷产品'}</div>
+                    
+                    <div class="amount-range">
+                        💰 借贷金额: ¥${product.minAmount.toFixed(2)} - ¥${product.maxAmount.toFixed(2)}
+                    </div>
+                    
+                    <div class="product-details">
+                        <div class="detail-row">
+                            <span class="detail-label">年利率</span>
+                            <span class="detail-value highlight">${product.rate}%</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">借贷期限</span>
+                            <span class="detail-value">${product.term} 天</span>
+                        </div>
+                    </div>
+                    
+                    <button class="apply-btn" 
+                            ${!product.enabled ? 'disabled' : ''}
+                            onclick="openApplyModal('${product.id}', '${product.name}', ${product.minAmount}, ${product.maxAmount}, ${product.rate}, ${product.term})">
+                        ${product.enabled ? '💳 立即申请' : '暂不可申请'}
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        // 显示空状态
+        function showEmptyState(message = '暂无可用的借贷产品') {
+            document.getElementById('productsContainer').innerHTML = `
+                <div style="grid-column: 1/-1;">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔔</div>
+                        <div class="empty-state-title">${message}</div>
+                        <div class="empty-state-text">请稍后再来查看我们的借贷产品</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 打开申请模态框
+        function openApplyModal(productId, productName, minAmount, maxAmount, rate, term) {
+            selectedProductData = { productId, productName, minAmount, maxAmount, rate, term };
+            
+            document.getElementById('selectedProduct').value = productName;
+            document.getElementById('loanAmount').value = '';
+            document.getElementById('loanAmount').min = minAmount;
+            document.getElementById('loanAmount').max = maxAmount;
+            document.getElementById('loanTerm').value = term;
+            document.getElementById('loanRate').value = rate + '%';
+            
+            document.getElementById('loanAmount').addEventListener('input', calculateProfit);
+            document.getElementById('applyModal').classList.add('show');
+        }
+        
+        // 关闭申请模态框
+        function closeApplyModal() {
+            document.getElementById('applyModal').classList.remove('show');
+            selectedProductData = null;
+        }
+        
+        // 计算预期收益
+        function calculateProfit() {
+            const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
+            const rate = parseFloat(selectedProductData.rate) || 0;
+            const term = parseFloat(selectedProductData.term) || 0;
+            
+            const profit = (amount * rate / 100 / 365 * term).toFixed(2);
+            document.getElementById('expectedProfit').value = `¥${profit}`;
+        }
+        
+        // 提交申请
+        async function submitApplication(event) {
+            event.preventDefault();
+            
+            const amount = parseFloat(document.getElementById('loanAmount').value);
+            
+            if (!selectedProductData) {
+                alert('请选择借贷产品');
+                return;
+            }
+            
+            if (amount < selectedProductData.minAmount || amount > selectedProductData.maxAmount) {
+                alert(`借贷金额必须在 ¥${selectedProductData.minAmount} 到 ¥${selectedProductData.maxAmount} 之间`);
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    alert('请先登录');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                const response = await fetch(`${API_BASE}/lending/apply`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        amount: amount,
+                        rate: selectedProductData.rate,
+                        term: selectedProductData.term
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✓ 借贷申请已提交，请等待审核结果');
+                    closeApplyModal();
+                } else {
+                    alert('✗ 申请失败: ' + (data.message || data.error));
+                }
+            } catch (error) {
+                console.error('Application error:', error);
+                alert('申请失败，请稍后重试');
+            }
+        }
+        
+        // 点击模态框外关闭
+        document.getElementById('applyModal').addEventListener('click', (e) => {
+            if (e.target.id === 'applyModal') {
+                closeApplyModal();
+            }
+        });
+    </script>
+</body>
+</html>

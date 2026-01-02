@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1a1a1a; color: #fff; }
+        .container { max-width: 600px; margin: 0 auto; }
+        textarea { width: 100%; height: 200px; background: #333; color: #0f0; padding: 10px; border: 1px solid #0f0; }
+        button { background: #0f0; color: #000; padding: 10px 20px; margin: 10px 0; cursor: pointer; }
+        .response { background: #222; padding: 10px; margin-top: 10px; border: 1px solid #0f0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>API Direct Test</h1>
+        
+        <h2>Test Register API</h2>
+        <button onclick="testRegister()">Test POST /api/auth/register</button>
+        <div id="regResponse" class="response"></div>
+        
+        <h2>Test Login API</h2>
+        <button onclick="testLogin()">Test POST /api/auth/login</button>
+        <div id="loginResponse" class="response"></div>
+        
+        <h2>Test Verify API</h2>
+        <button onclick="testVerify()">Test GET /api/auth/verify</button>
+        <div id="verifyResponse" class="response"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        
+        async function testRegister() {
+            const regRes = document.getElementById('regResponse');
+            regRes.innerHTML = 'Loading...';
+            try {
+                const response = await fetch(API_BASE + '/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'testuser_' + Date.now(),
+                        email: 'test_' + Date.now() + '@test.com',
+                        phone: '12345678901',
+                        password: 'Test123456'
+                    })
+                });
+                const data = await response.text();
+                regRes.innerHTML = `<strong>Status: ${response.status}</strong><br><textarea>${data}</textarea>`;
+            } catch(e) {
+                regRes.innerHTML = `<strong>Error:</strong> ${e.message}`;
+            }
+        }
+        
+        async function testLogin() {
+            const loginRes = document.getElementById('loginResponse');
+            loginRes.innerHTML = 'Loading...';
+            try {
+                const response = await fetch(API_BASE + '/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+                const data = await response.text();
+                loginRes.innerHTML = `<strong>Status: ${response.status}</strong><br><textarea>${data}</textarea>`;
+            } catch(e) {
+                loginRes.innerHTML = `<strong>Error:</strong> ${e.message}`;
+            }
+        }
+        
+        async function testVerify() {
+            const verifyRes = document.getElementById('verifyResponse');
+            verifyRes.innerHTML = 'Loading...';
+            try {
+                const response = await fetch(API_BASE + '/auth/verify', {
+                    method: 'GET'
+                });
+                const data = await response.text();
+                verifyRes.innerHTML = `<strong>Status: ${response.status}</strong><br><textarea>${data}</textarea>`;
+            } catch(e) {
+                verifyRes.innerHTML = `<strong>Error:</strong> ${e.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

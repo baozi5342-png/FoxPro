@@ -8,8 +8,8 @@ const API_CONFIG = {
   '127.0.0.1:3000': 'http://localhost:3000/api',
   '127.0.0.1': 'http://localhost:3000/api',
   
-  // Vercel 部署
-  'foxpro.vercel.app': 'https://foxpro.vercel.app/api',
+  // Render 部署
+  'foxpro-yv69.onrender.com': 'https://foxpro-yv69.onrender.com/api',
   
   // 生产环境 - foxprocs.top
   'foxprocs.top': 'https://foxprocs.top/api',
