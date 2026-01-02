@@ -271,25 +271,39 @@ app.get('/api/admin/users', async (req, res) => {
     }
 
     let users = [];
+    const userMap = {}; // 用于去重
     
-    // 尝试从MongoDB获取用户
+    // 首先尝试从MongoDB获取用户
     if (mongoConnected) {
       try {
-        users = await User.find({}, { password: 0 }).lean();
-        console.log(`✅ 从MongoDB获取了 ${users.length} 个用户`);
+        const dbUsers = await User.find({}, { password: 0 }).lean();
+        console.log(`✅ 从MongoDB获取了 ${dbUsers.length} 个用户`);
+        dbUsers.forEach(u => {
+          userMap[u.id] = {
+            id: u.id, username: u.username, email: u.email,
+            phone: u.phone, country: u.country, status: u.status, createdAt: u.createdAt
+          };
+        });
       } catch (dbErr) {
         console.error('❌ MongoDB查询错误:', dbErr.message);
       }
     }
     
-    // 如果MongoDB为空或失败，检查内存存储
-    if (users.length === 0 && Object.keys(inMemoryUsers).length > 0) {
-      users = Object.values(inMemoryUsers).map(u => ({
-        id: u.id, username: u.username, email: u.email,
-        phone: u.phone, country: u.country, status: u.status, createdAt: u.createdAt
-      }));
-      console.log(`✅ 从内存存储获取了 ${users.length} 个用户`);
+    // 同时检查内存存储中的用户（可能有新注册但未同步到数据库的用户）
+    if (Object.keys(inMemoryUsers).length > 0) {
+      Object.values(inMemoryUsers).forEach(u => {
+        if (!userMap[u.id]) { // 避免重复
+          userMap[u.id] = {
+            id: u.id, username: u.username, email: u.email,
+            phone: u.phone, country: u.country, status: u.status, createdAt: u.createdAt
+          };
+          console.log(`ℹ️  从内存存储补充用户: ${u.username}`);
+        }
+      });
     }
+    
+    users = Object.values(userMap);
+    console.log(`📊 总共返回 ${users.length} 个用户（MongoDB + 内存合并）`);
     
     res.json({
       success: true,
