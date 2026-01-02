@@ -510,40 +510,40 @@
       <!-- 核心管理 -->
       <div class="nav-section">
         <div class="nav-section-title">核心管理</div>
-        <button class="nav-link active" data-section="dashboard">📊 仪表盘</button>
-        <button class="nav-link" data-section="users">👥 用户管理</button>
+        <button class="nav-link active" data-section="dashboard" onclick="switchSection('dashboard')">📊 仪表盘</button>
+        <button class="nav-link" data-section="users" onclick="switchSection('users')">👥 用户管理</button>
       </div>
 
       <!-- 身份认证 -->
       <div class="nav-section">
         <div class="nav-section-title">身份认证</div>
-        <button class="nav-link" data-section="primary-auth">📋 初级认证</button>
-        <button class="nav-link" data-section="advanced-auth">🔐 高级认证</button>
+        <button class="nav-link" data-section="primary-auth" onclick="switchSection('primary-auth')">📋 初级认证</button>
+        <button class="nav-link" data-section="advanced-auth" onclick="switchSection('advanced-auth')">🔐 高级认证</button>
       </div>
 
       <!-- 交易管理 -->
       <div class="nav-section">
         <div class="nav-section-title">交易管理</div>
-        <button class="nav-link" data-section="quick-contract">⚡ 秒合约配置</button>
-        <button class="nav-link" data-section="contract-trades">📈 秒合约交易</button>
-        <button class="nav-link" data-section="wealth">💰 理财产品</button>
-        <button class="nav-link" data-section="exchange-rates">💱 兑换币种</button>
+        <button class="nav-link" data-section="quick-contract" onclick="switchSection('quick-contract')">⚡ 秒合约配置</button>
+        <button class="nav-link" data-section="contract-trades" onclick="switchSection('contract-trades')">📈 秒合约交易</button>
+        <button class="nav-link" data-section="wealth" onclick="switchSection('wealth')">💰 理财产品</button>
+        <button class="nav-link" data-section="exchange-rates" onclick="switchSection('exchange-rates')">💱 兑换币种</button>
       </div>
 
       <!-- 资产管理 -->
       <div class="nav-section">
         <div class="nav-section-title">资产管理</div>
-        <button class="nav-link" data-section="balance">💵 用户余额</button>
-        <button class="nav-link" data-section="recharge">⬆️ 充值管理</button>
-        <button class="nav-link" data-section="withdraw">⬇️ 提现管理</button>
-        <button class="nav-link" data-section="lending">🏦 借贷管理</button>
+        <button class="nav-link" data-section="balance" onclick="switchSection('balance')">💵 用户余额</button>
+        <button class="nav-link" data-section="recharge" onclick="switchSection('recharge')">⬆️ 充值管理</button>
+        <button class="nav-link" data-section="withdraw" onclick="switchSection('withdraw')">⬇️ 提现管理</button>
+        <button class="nav-link" data-section="lending" onclick="switchSection('lending')">🏦 借贷管理</button>
       </div>
 
       <!-- 系统管理 -->
       <div class="nav-section">
         <div class="nav-section-title">系统管理</div>
-        <button class="nav-link" data-section="pages">📄 页面管理</button>
-        <button class="nav-link" data-section="system">⚙️ 系统设置</button>
+        <button class="nav-link" data-section="pages" onclick="switchSection('pages')">📄 页面管理</button>
+        <button class="nav-link" data-section="system" onclick="switchSection('system')">⚙️ 系统设置</button>
       </div>
     </div>
 
@@ -663,40 +663,30 @@
         <div id="quick-contract" class="section">
           <h1 class="section-title">秒合约配置</h1>
           <div class="card">
-            <div class="card-title">配置秒合约参数</div>
+            <div class="card-title">添加新的秒合约周期</div>
             <div class="form-grid">
               <div class="form-group">
                 <label>合约周期（秒）</label>
-                <input type="number" id="contractCycle" value="60" min="10" max="3600">
+                <input type="number" id="newSeconds" value="60" min="10" max="3600">
               </div>
               <div class="form-group">
                 <label>盈利比例 (%)</label>
-                <input type="number" id="profitRatio" value="80" min="10" max="200" step="5">
-              </div>
-              <div class="form-group">
-                <label>初始金额</label>
-                <input type="number" id="initialAmount" value="100" min="10" step="10">
-              </div>
-              <div class="form-group">
-                <label>最大赔率</label>
-                <input type="number" id="maxRatio" value="10" min="1" max="100">
+                <input type="number" id="newProfitRate" value="50" min="10" max="200" step="5">
               </div>
             </div>
-            <button class="btn btn-primary" onclick="saveContractConfig()">💾 保存配置</button>
+            <button class="btn btn-primary" onclick="addNewQuickContractPeriod()">➕ 添加周期</button>
           </div>
 
           <div class="table-container">
             <div class="table-header">
-              <div class="table-header-title">配置历史</div>
+              <div class="table-header-title">秒合约周期配置</div>
             </div>
             <table>
               <thead>
                 <tr>
                   <th>周期（秒）</th>
-                  <th>盈利比例</th>
-                  <th>初始金额</th>
-                  <th>最大赔率</th>
-                  <th>更新时间</th>
+                  <th>盈利比例 (%)</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody id="contractConfigTable">
@@ -1422,21 +1412,10 @@
     }
 
     async function loadContractConfig() {
-      const token = localStorage.getItem('adminToken');
-      try {
-        const res = await fetch(`${API_BASE}/admin/quick-contract/config`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success && data.data) {
-          document.getElementById('contractCycle').value = data.data.cycle || 60;
-          document.getElementById('profitRatio').value = data.data.profitRatio || 80;
-          document.getElementById('initialAmount').value = data.data.initialAmount || 100;
-          document.getElementById('maxRatio').value = data.data.maxRatio || 10;
-        }
-      } catch (err) {
-        console.error('Failed to load contract config:', err);
-      }
+      // 加载秒合约周期配置
+      loadQuickContractConfig();
+      // 也加载交易记录
+      loadQuickContractTrades();
     }
 
     async function loadContractTrades() {
@@ -2194,6 +2173,116 @@
       }
     }
 
+    // ============== Quick Contract Config Functions ==============
+    async function loadQuickContractConfig() {
+      const token = localStorage.getItem('adminToken');
+      try {
+        const res = await fetch(`${API_BASE}/admin/quick-contract/config`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          const table = document.getElementById('contractConfigTable');
+          const html = data.data.length > 0 ? data.data.map((config, idx) => `
+            <tr>
+              <td>${config.seconds}</td>
+              <td>${config.profitRate}%</td>
+              <td>
+                <button class="btn btn-sm btn-danger" onclick="deleteQuickContractPeriod(${idx})">🗑️ 删除</button>
+              </td>
+            </tr>
+          `).join('') : '<tr><td colspan="3" class="empty-state">暂无配置</td></tr>';
+          if (table) table.innerHTML = html;
+        }
+      } catch (err) {
+        console.error('Failed to load config:', err);
+      }
+    }
+
+    async function addNewQuickContractPeriod() {
+      const seconds = parseInt(document.getElementById('newSeconds').value);
+      const profitRate = parseInt(document.getElementById('newProfitRate').value);
+      
+      if (!seconds || !profitRate) {
+        alert('请填写所有字段');
+        return;
+      }
+
+      const token = localStorage.getItem('adminToken');
+      try {
+        // 先获取现有配置
+        const getRes = await fetch(`${API_BASE}/admin/quick-contract/config`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const getData = await getRes.json();
+        let periods = getData.data || [];
+
+        // 检查是否已存在相同的周期
+        if (periods.some(p => p.seconds === seconds)) {
+          alert('该周期已存在，请修改或删除后重新添加');
+          return;
+        }
+
+        // 添加新周期
+        periods.push({ seconds, profitRate });
+
+        // 保存更新的配置
+        const saveRes = await fetch(`${API_BASE}/admin/quick-contract/config`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify({ periods })
+        });
+        const saveData = await saveRes.json();
+        if (saveData.success) {
+          alert('周期已添加');
+          document.getElementById('newSeconds').value = '60';
+          document.getElementById('newProfitRate').value = '50';
+          loadQuickContractConfig();
+        }
+      } catch (err) {
+        console.error('Failed to add period:', err);
+        alert('添加失败：' + err.message);
+      }
+    }
+
+    async function deleteQuickContractPeriod(idx) {
+      if (!confirm('确定要删除该周期吗？')) return;
+
+      const token = localStorage.getItem('adminToken');
+      try {
+        // 获取现有配置
+        const getRes = await fetch(`${API_BASE}/admin/quick-contract/config`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const getData = await getRes.json();
+        let periods = getData.data || [];
+
+        // 删除指定索引的周期
+        periods.splice(idx, 1);
+
+        // 保存更新的配置
+        const saveRes = await fetch(`${API_BASE}/admin/quick-contract/config`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify({ periods })
+        });
+        const saveData = await saveRes.json();
+        if (saveData.success) {
+          alert('周期已删除');
+          loadQuickContractConfig();
+        }
+      } catch (err) {
+        console.error('Failed to delete period:', err);
+        alert('删除失败：' + err.message);
+      }
+    }
+
     async function loadQuickContractTrades() {
       const token = localStorage.getItem('adminToken');
       try {
@@ -2544,7 +2633,9 @@
         document.getElementById('adminName').textContent = 'Admin';
       }
 
-      loadDashboard();
+      // 初始化时显示 dashboard section
+      switchSection('dashboard');
+      loadQuickContractConfig(); // 初始化时也加载秒合约配置
 
       // ============ 自动实时刷新 ============
       setInterval(() => {
@@ -2557,7 +2648,10 @@
           else if (sectionId === 'users') loadUsers();
           else if (sectionId === 'primary-auth') loadPrimaryAuth();
           else if (sectionId === 'advanced-auth') loadAdvancedAuth();
-          else if (sectionId === 'quick-contract') loadQuickContractTrades();
+          else if (sectionId === 'quick-contract') {
+            loadQuickContractConfig();
+            loadQuickContractTrades();
+          }
           else if (sectionId === 'contract-trades') loadQuickContractTrades();
           else if (sectionId === 'wealth') loadLendingProducts();
           else if (sectionId === 'exchange-rates') loadExchangeRecords();
@@ -2566,26 +2660,6 @@
           else if (sectionId === 'withdrawal') loadWithdrawalOrders();
         }
       }, 3000); // 每3秒刷新一次
-
-      // 页面切换时也立即刷新数据
-      document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', function() {
-          setTimeout(() => {
-            const sectionId = this.getAttribute('data-nav-link');
-            if (sectionId === 'dashboard') loadDashboard();
-            else if (sectionId === 'users') loadUsers();
-            else if (sectionId === 'primary-auth') loadPrimaryAuth();
-            else if (sectionId === 'advanced-auth') loadAdvancedAuth();
-            else if (sectionId === 'quick-contract') loadQuickContractTrades();
-            else if (sectionId === 'contract-trades') loadQuickContractTrades();
-            else if (sectionId === 'wealth') loadLendingProducts();
-            else if (sectionId === 'exchange-rates') loadExchangeRecords();
-            else if (sectionId === 'recharge') loadRechargeOrders();
-            else if (sectionId === 'lending') loadLendingRequests();
-            else if (sectionId === 'withdrawal') loadWithdrawalOrders();
-          }, 100);
-        });
-      });
     });
   </script>
 </body>
