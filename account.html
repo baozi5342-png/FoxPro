@@ -659,9 +659,9 @@
           accountHeader.style.display = 'flex';
           loginPrompt.style.display = 'none';
           if (contentArea) contentArea.style.display = 'block';
-          // Only show the bottom logout button, not the topbar one
-          if (logoutBtn && logoutBtn.id !== 'logoutBtn') {
-            logoutBtn.style.display = 'inline-block';
+          // 隐藏顶部logout按钮 - 无论如何都不显示
+          if (logoutBtn) {
+            logoutBtn.style.display = 'none !important';
           }
           
           // Set user info - 从user对象或直接从localStorage读取
@@ -680,7 +680,7 @@
           if (contentArea) contentArea.style.display = 'none';
           // Hide all logout buttons
           const allLogoutBtns = document.querySelectorAll('button[onclick="logout()"]');
-          allLogoutBtns.forEach(btn => btn.style.display = 'none');
+          allLogoutBtns.forEach(btn => btn.style.display = 'none !important');
         }
         
         document.querySelectorAll('.main-nav .nav-link').forEach(item => {
