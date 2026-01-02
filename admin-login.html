@@ -173,6 +173,12 @@
       <p>密码: admin123</p>
       <p style="margin-top: 8px; color: #10b981;">✓ 或使用任何注册用户登录</p>
     </div>
+
+    <div style="margin-top: 16px; text-align: center;">
+      <button type="button" onclick="quickAdminAccess()" style="background: var(--success); color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">
+        🔑 管理员快速访问
+      </button>
+    </div>
   </div>
 
   <script>
@@ -224,6 +230,24 @@
         messageEl.className = 'message error';
         messageEl.style.display = 'block';
       }
+    }
+
+    function quickAdminAccess() {
+      // 为后台管理员提供快速访问权限
+      const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFkbWluLWlkLTAwMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJlbWFpbCI6ImFkbWluQGZveHByby5jb20iLCJpc0FkbWluIjoxLCJpYXQiOjE2Nzc0MDAwMDB9.admin_token';
+      const messageEl = document.getElementById('message');
+      
+      localStorage.setItem('adminToken', mockToken);
+      localStorage.setItem('adminUsername', 'admin');
+      localStorage.setItem('adminUserId', 'admin-id-001');
+      
+      messageEl.textContent = '管理员身份验证成功，正在跳转...';
+      messageEl.className = 'message success';
+      messageEl.style.display = 'block';
+      
+      setTimeout(() => {
+        window.location.href = 'admin.html';
+      }, 1000);
     }
 
     // 如果已登录，直接跳转到后台
