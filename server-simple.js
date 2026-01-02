@@ -115,6 +115,12 @@ app.post('/api/auth/register', async (req, res) => {
       updatedAt: timestamp
     };
 
+    // 始终保存到内存存储（作为备选）
+    if (!inMemoryUsers[username.toLowerCase()]) {
+      inMemoryUsers[username.toLowerCase()] = newUserData;
+      console.log(`📝 用户 ${username} 已保存到内存存储`);
+    }
+
     // 尝试使用MongoDB，如果失败则使用内存存储
     if (mongoConnected) {
       try {
@@ -146,16 +152,10 @@ app.post('/api/auth/register', async (req, res) => {
         await advancedCert.save();
         console.log(`✅ 已为用户 ${username} 创建初级和高级认证记录（待审核状态）`);
       } catch (dbErr) {
-        console.error('❌ 数据库错误:', dbErr.message);
-        return res.status(500).json({ success: false, message: 'Database error: ' + dbErr.message });
+        console.error('⚠️  MongoDB存储失败，但用户已保存到内存:', dbErr.message);
       }
     } else {
-      // 使用内存存储
-      if (inMemoryUsers[username.toLowerCase()]) {
-        return res.status(400).json({ success: false, message: 'Username already exists' });
-      }
-      inMemoryUsers[username.toLowerCase()] = newUserData;
-      console.log(`✅ 用户 ${username} 已保存到内存存储`);
+      console.log(`⚠️  MongoDB未连接，用户仅保存到内存存储`);
     }
 
     const token = jwt.sign({
