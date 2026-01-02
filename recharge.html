@@ -223,11 +223,9 @@
             <div class="logo">FoxPro<span>Exchange</span></div>
           </div>
           <div class="topbar-right">
-            <button class="btn ghost" id="logoutBtn" style="display: none !important;" onclick="logout()">Log Out</button>
             <a href="#" id="supportLink" title="Customer Support" style="color: var(--primary); font-size: 18px; text-decoration: none; display: none; margin-right: 12px;">
               💬
             </a>
-            <span id="userInfo" style="display: none !important; color: var(--text); margin-right: 15px;"><span id="username"></span></span>
           </div>
         </div>
         <div class="topbar-nav-wrapper">
@@ -575,18 +573,15 @@
         const authButtons = document.getElementById('authButtons');
         const loginBtn = document.getElementById('loginBtn');
         const registerBtn = document.getElementById('registerBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
         
         if (isLoggedIn()) {
           if (authButtons) authButtons.style.display = 'none';
           if (loginBtn) loginBtn.style.display = 'none';
           if (registerBtn) registerBtn.style.display = 'none';
-          if (logoutBtn) logoutBtn.style.display = 'block';
         } else {
           if (authButtons) authButtons.style.display = 'flex';
           if (loginBtn) loginBtn.style.display = 'block';
           if (registerBtn) registerBtn.style.display = 'block';
-          if (logoutBtn) logoutBtn.style.display = 'none';
         }
       }
 
