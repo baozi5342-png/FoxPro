@@ -4,8 +4,8 @@
   "description": "FoxPro Exchange - 专业级数字资产交易平台",
   "main": "server.js",
   "scripts": {
-    "start": "NODE_ENV=production node server.js",
-    "dev": "nodemon server.js",
+    "start": "NODE_ENV=production node server-simple.js",
+    "dev": "nodemon server-simple.js",
     "build": "npm install"
   },
   "engines": {
