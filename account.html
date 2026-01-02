@@ -645,6 +645,10 @@
         loadSupportLink();
         const user = getCurrentUser();
         
+        console.log('[Account] Current user:', user);
+        console.log('[Account] localStorage token:', localStorage.getItem('token'));
+        console.log('[Account] localStorage username:', localStorage.getItem('username'));
+        
         const accountHeader = document.getElementById('accountHeader');
         const loginPrompt = document.getElementById('loginPrompt');
         const contentArea = document.getElementById('content-area');
@@ -660,10 +664,15 @@
             logoutBtn.style.display = 'inline-block';
           }
           
-          // Set user info
-          document.getElementById('accountUsername').textContent = user.username || 'User';
-          document.getElementById('accountId').textContent = `UID: ${user.userId || 'N/A'}`;
+          // Set user info - 从user对象或直接从localStorage读取
+          const displayUsername = user?.username || localStorage.getItem('username') || 'User';
+          const displayUserId = user?.userId || localStorage.getItem('userId') || 'N/A';
+          
+          document.getElementById('accountUsername').textContent = displayUsername;
+          document.getElementById('accountId').textContent = `UID: ${displayUserId}`;
           document.getElementById('accountScore').textContent = 'Credit Score: Excellent';
+          
+          console.log('[Account] Display username:', displayUsername);
         } else {
           // User is not logged in
           accountHeader.style.display = 'none';
