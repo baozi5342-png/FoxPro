@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: foxpro
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: npm_config_build_from_source
+        value: "true"
