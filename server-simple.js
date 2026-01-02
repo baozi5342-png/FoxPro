@@ -307,6 +307,7 @@ app.get('/api/account/verification-status', async (req, res) => {
     console.error('❌ /api/account/verification-status 错误:', error);
     res.status(401).json({ success: false, message: 'Invalid token' });
   }
+});
 
 // 根路由 - 返回首页
 app.get('/', (req, res) => {
