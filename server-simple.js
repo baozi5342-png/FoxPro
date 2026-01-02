@@ -1,16 +1,18 @@
-// FoxPro Exchange 完整后台服务器 - 使用MongoDB持久化
+// FoxPro Exchange 完整后台服务器 - 使用MongoDB + 模块化后端
 const express = require('express');
 const cors = require('cors');
-const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const path = require('path');
+require('dotenv').config();
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'foxpro-secret-key-2026';
+const PORT = process.env.PORT || 3000;
 
 // ============ 中间件 ============
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static(path.join(__dirname))); // 提供静态文件
 
 // ============ MongoDB 连接 ============
