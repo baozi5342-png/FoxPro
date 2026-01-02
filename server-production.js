@@ -1,11 +1,18 @@
-// FoxPro Exchange - 最小化生产启动文件
+// FoxPro Exchange - 完整生产服务器（带数据存储）
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const DATA_DIR = path.join(__dirname, 'data');
+
+// 确保data目录存在
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
 // ============ 中间件 ============
 app.use(cors());
@@ -19,7 +26,41 @@ app.use((req, res, next) => {
   next();
 });
 
-// ============ 健康检查端点 ============
+// ============ 数据存储工具 ============
+let inMemoryData = {
+  users: [],
+  orders: [],
+  transactions: [],
+  kyc: []
+};
+
+let nextUserId = 1;
+
+function saveData() {
+  fs.writeFileSync(
+    path.join(DATA_DIR, 'users.json'),
+    JSON.stringify(inMemoryData.users, null, 2)
+  );
+}
+
+function loadData() {
+  try {
+    const usersPath = path.join(DATA_DIR, 'users.json');
+    if (fs.existsSync(usersPath)) {
+      inMemoryData.users = JSON.parse(fs.readFileSync(usersPath, 'utf8'));
+      if (inMemoryData.users.length > 0) {
+        nextUserId = Math.max(...inMemoryData.users.map(u => u.id)) + 1;
+      }
+    }
+  } catch (err) {
+    console.warn('无法加载用户数据:', err.message);
+  }
+}
+
+// 应用启动时加载数据
+loadData();
+
+// ============ 健康检查 ============
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
@@ -29,7 +70,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ============ 模拟市场数据 ============
+// ============ 市场数据 ============
 const mockMarkets = [
   { symbol: 'BTC', name: 'Bitcoin', currentPrice: 42500, priceChangePercent24h: 2.5, rank: 1 },
   { symbol: 'ETH', name: 'Ethereum', currentPrice: 2250, priceChangePercent24h: 1.8, rank: 2 },
@@ -41,9 +82,6 @@ const mockMarkets = [
   { symbol: 'LTC', name: 'Litecoin', currentPrice: 195, priceChangePercent24h: 1.9, rank: 8 }
 ];
 
-// ============ API 路由 ============
-
-// 市场数据
 app.get('/api/markets', (req, res) => {
   res.json({ success: true, markets: mockMarkets });
 });
@@ -56,36 +94,100 @@ app.get('/api/prices', (req, res) => {
   res.json({ success: true, prices });
 });
 
-// 模拟认证
-app.post('/api/auth/login', (req, res) => {
-  const { username, password } = req.body;
-  if (username && password) {
-    res.json({
-      success: true,
-      message: '登录成功',
-      token: 'mock-token-' + Date.now(),
-      user: { id: 1, username, email: username + '@foxpro.com' }
-    });
-  } else {
-    res.status(400).json({ success: false, message: '用户名或密码不能为空' });
-  }
-});
-
+// ============ 认证API ============
 app.post('/api/auth/register', (req, res) => {
-  const { username, email, password } = req.body;
-  if (username && email && password) {
+  try {
+    const { username, email, password, phone } = req.body;
+
+    // 验证输入
+    if (!username || !email || !password) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    // 检查用户是否已存在
+    if (inMemoryData.users.find(u => u.username === username || u.email === email)) {
+      return res.status(400).json({ success: false, message: 'User already exists' });
+    }
+
+    // 创建新用户
+    const newUser = {
+      id: nextUserId++,
+      username,
+      email,
+      phone: phone || '',
+      password: Buffer.from(password).toString('base64'), // 简单编码
+      createdAt: new Date().toISOString(),
+      status: 'active',
+      kyc_status: 'unverified',
+      assets: {
+        BTC: 0,
+        ETH: 0,
+        USDT: 0
+      },
+      balance: 0
+    };
+
+    inMemoryData.users.push(newUser);
+    saveData();
+
     res.json({
       success: true,
-      message: '注册成功',
-      user: { id: 2, username, email }
+      message: 'Registration successful',
+      user: {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        createdAt: newUser.createdAt
+      }
     });
-  } else {
-    res.status(400).json({ success: false, message: '缺少必要字段' });
+  } catch (err) {
+    console.error('Register error:', err);
+    res.status(500).json({ success: false, message: 'Registration failed' });
   }
 });
 
-// 模拟用户数据
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Username and password required' });
+    }
+
+    const user = inMemoryData.users.find(
+      u => (u.username === username || u.email === username)
+    );
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Invalid username or password' });
+    }
+
+    // 验证密码
+    const decodedPassword = Buffer.from(user.password, 'base64').toString('utf8');
+    if (decodedPassword !== password) {
+      return res.status(401).json({ success: false, message: 'Invalid username or password' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      token: 'token-' + user.id + '-' + Date.now(),
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        kyc_status: user.kyc_status
+      }
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ success: false, message: 'Login failed' });
+  }
+});
+
+// ============ 用户API ============
 app.get('/api/user/profile', (req, res) => {
+  // 模拟用户配置文件
   res.json({
     success: true,
     user: {
@@ -110,8 +212,8 @@ app.get('/api/admin/stats', (req, res) => {
   res.json({
     success: true,
     stats: {
-      totalUsers: 1250,
-      activeUsers: 580,
+      totalUsers: inMemoryData.users.length,
+      activeUsers: inMemoryData.users.filter(u => u.status === 'active').length,
       totalVolume: 5250000,
       totalTransactions: 12580
     }
@@ -120,25 +222,35 @@ app.get('/api/admin/stats', (req, res) => {
 
 // 用户列表
 app.get('/api/admin/users', (req, res) => {
+  const users = inMemoryData.users.map(u => ({
+    id: u.id,
+    username: u.username,
+    email: u.email,
+    phone: u.phone,
+    registeredAt: u.createdAt.split('T')[0],
+    status: u.status,
+    kyc_status: u.kyc_status
+  }));
+
   res.json({
     success: true,
-    users: [
-      { id: 1, username: 'user1', email: 'user1@foxpro.com', registeredAt: '2025-12-01', status: 'active' },
-      { id: 2, username: 'user2', email: 'user2@foxpro.com', registeredAt: '2025-12-02', status: 'active' },
-      { id: 3, username: 'user3', email: 'user3@foxpro.com', registeredAt: '2025-12-03', status: 'inactive' }
-    ],
-    total: 1250
+    users: users,
+    total: users.length
   });
 });
 
 // 初级认证审核列表
 app.get('/api/admin/auth/primary', (req, res) => {
+  const pendingUsers = inMemoryData.users.filter(u => u.kyc_status === 'unverified');
   res.json({
     success: true,
-    data: [
-      { id: 1, username: 'user4', status: '待审核', submittedAt: '2025-12-28' },
-      { id: 2, username: 'user5', status: '待审核', submittedAt: '2025-12-27' }
-    ]
+    data: pendingUsers.map((u, idx) => ({
+      id: u.id,
+      username: u.username,
+      email: u.email,
+      status: 'Pending',
+      submittedAt: u.createdAt.split('T')[0]
+    }))
   });
 });
 
@@ -147,7 +259,7 @@ app.get('/api/admin/auth/advanced', (req, res) => {
   res.json({
     success: true,
     data: [
-      { id: 1, username: 'user6', status: '待审核', submittedAt: '2025-12-28' }
+      { id: 1, username: 'user_advanced', email: 'advanced@foxpro.com', status: 'Pending', submittedAt: '2026-01-03' }
     ]
   });
 });
@@ -170,8 +282,8 @@ app.get('/api/admin/quick-contract/trades', (req, res) => {
   res.json({
     success: true,
     trades: [
-      { id: 1, symbol: 'BTC', amount: 100, result: 'win', createdAt: '2025-12-28' },
-      { id: 2, symbol: 'ETH', amount: 50, result: 'loss', createdAt: '2025-12-28' }
+      { id: 1, symbol: 'BTC', amount: 100, result: 'win', createdAt: '2026-01-03' },
+      { id: 2, symbol: 'ETH', amount: 50, result: 'loss', createdAt: '2026-01-03' }
     ]
   });
 });
@@ -185,7 +297,7 @@ app.get('/api/admin/quick-contract/trades/:tradeId', (req, res) => {
       symbol: 'BTC',
       amount: 100,
       result: 'win',
-      createdAt: '2025-12-28',
+      createdAt: '2026-01-03',
       details: 'Trade details...'
     }
   });
@@ -193,18 +305,24 @@ app.get('/api/admin/quick-contract/trades/:tradeId', (req, res) => {
 
 // 认证审核通过
 app.post('/api/admin/auth/approve', (req, res) => {
-  res.json({
-    success: true,
-    message: '认证已通过'
-  });
+  const { userId } = req.body;
+  const user = inMemoryData.users.find(u => u.id === userId);
+  if (user) {
+    user.kyc_status = 'verified';
+    saveData();
+  }
+  res.json({ success: true, message: 'Verification approved' });
 });
 
 // 认证审核拒绝
 app.post('/api/admin/auth/reject', (req, res) => {
-  res.json({
-    success: true,
-    message: '认证已拒绝'
-  });
+  const { userId } = req.body;
+  const user = inMemoryData.users.find(u => u.id === userId);
+  if (user) {
+    user.kyc_status = 'rejected';
+    saveData();
+  }
+  res.json({ success: true, message: 'Verification rejected' });
 });
 
 // 理财产品列表
@@ -212,8 +330,8 @@ app.get('/api/wealth/products', (req, res) => {
   res.json({
     success: true,
     products: [
-      { id: 1, name: '30天低风险产品', rate: 8.5, minAmount: 100 },
-      { id: 2, name: '90天中等产品', rate: 12.0, minAmount: 500 }
+      { id: 1, name: '30-Day Low Risk Product', rate: 8.5, minAmount: 100 },
+      { id: 2, name: '90-Day Medium Risk Product', rate: 12.0, minAmount: 500 }
     ]
   });
 });
@@ -223,7 +341,7 @@ app.get('/api/admin/exchange/records', (req, res) => {
   res.json({
     success: true,
     records: [
-      { id: 1, userId: 1, from: 'BTC', to: 'USDT', amount: 0.5, createdAt: '2025-12-28' }
+      { id: 1, userId: 1, from: 'BTC', to: 'USDT', amount: 0.5, createdAt: '2026-01-03' }
     ]
   });
 });
@@ -233,7 +351,7 @@ app.get('/api/admin/exchange/user/:userId', (req, res) => {
   res.json({
     success: true,
     records: [
-      { id: 1, from: 'BTC', to: 'USDT', amount: 0.5, createdAt: '2025-12-28' }
+      { id: 1, from: 'BTC', to: 'USDT', amount: 0.5, createdAt: '2026-01-03' }
     ]
   });
 });
@@ -249,12 +367,8 @@ app.get('/api/api/admin/recharge/config', (req, res) => {
   });
 });
 
-// 更新充值配置
 app.post('/api/api/admin/recharge/config', (req, res) => {
-  res.json({
-    success: true,
-    message: '配置已更新'
-  });
+  res.json({ success: true, message: 'Configuration updated' });
 });
 
 // 币种充值配置
@@ -270,12 +384,8 @@ app.get('/api/api/admin/recharge/config/:coin', (req, res) => {
   });
 });
 
-// 更新币种充值配置
 app.post('/api/api/admin/recharge/config/:coin', (req, res) => {
-  res.json({
-    success: true,
-    message: `${req.params.coin}配置已更新`
-  });
+  res.json({ success: true, message: `${req.params.coin} configuration updated` });
 });
 
 // 充值订单
@@ -283,7 +393,7 @@ app.get('/api/api/admin/recharge/orders', (req, res) => {
   res.json({
     success: true,
     orders: [
-      { id: 1, userId: 1, coin: 'BTC', amount: 0.1, status: 'completed', createdAt: '2025-12-28' }
+      { id: 1, userId: 1, coin: 'BTC', amount: 0.1, status: 'completed', createdAt: '2026-01-03' }
     ]
   });
 });
@@ -293,14 +403,14 @@ app.get('/api/admin/withdraw/records', (req, res) => {
   res.json({
     success: true,
     records: [
-      { id: 1, userId: 1, coin: 'BTC', amount: 0.05, status: 'pending', createdAt: '2025-12-28' }
+      { id: 1, userId: 1, coin: 'BTC', amount: 0.05, status: 'pending', createdAt: '2026-01-03' }
     ]
   });
 });
 
-// 前端页面路由
+// ============ 前端页面路由 ============
 const pages = [
-  'index', 'login', 'register', 'account', 'market', 'trade', 'exchange', 
+  'index', 'login', 'register', 'account', 'market', 'trade', 'exchange',
   'lending-products', 'recharge', 'withdraw', 'admin', 'admin-login', 'assets', 'customer-support'
 ];
 
@@ -309,7 +419,7 @@ pages.forEach(page => {
     const filePath = path.join(__dirname, `${page}.html`);
     res.sendFile(filePath, (err) => {
       if (err) {
-        console.warn(`页面不存在: ${page}.html`);
+        console.warn(`Page not found: ${page}.html`);
         res.status(404).send('Page not found');
       }
     });
@@ -334,7 +444,7 @@ app.use((req, res) => {
 
 // 错误处理
 app.use((err, req, res, next) => {
-  console.error('服务器错误:', err);
+  console.error('Server error:', err);
   res.status(500).json({
     success: false,
     message: err.message || 'Internal server error'
@@ -345,37 +455,37 @@ app.use((err, req, res, next) => {
 const server = app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════╗
-║   🚀 FoxPro Exchange 生产服务器        ║
+║   🚀 FoxPro Exchange Server Started    ║
 ╠════════════════════════════════════════╣
-║ 地址: http://localhost:${PORT.toString().padEnd(30)}║
-║ 环境: ${(process.env.NODE_ENV || 'production').toUpperCase().padEnd(33)}║
+║ Address: http://localhost:${PORT.toString().padEnd(28)}║
+║ Environment: ${(process.env.NODE_ENV || 'production').toUpperCase().padEnd(30)}║
+║ Users: ${inMemoryData.users.length.toString().padEnd(39)}║
 ╚════════════════════════════════════════╝
   `);
 });
 
 // 优雅关闭
 process.on('SIGTERM', () => {
-  console.log('收到SIGTERM，正在关闭服务器...');
+  console.log('Shutting down gracefully...');
   server.close(() => {
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('收到SIGINT，正在关闭服务器...');
+  console.log('Shutting down gracefully...');
   server.close(() => {
     process.exit(0);
   });
 });
 
-// 未捕获异常处理
 process.on('uncaughtException', (err) => {
-  console.error('未捕获的异常:', err);
+  console.error('Uncaught exception:', err);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.error('未处理的Promise拒绝:', reason);
+  console.error('Unhandled rejection:', reason);
   process.exit(1);
 });
 
