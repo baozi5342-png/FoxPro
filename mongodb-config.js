@@ -1,17 +1,17 @@
 // MongoDB 完整集成和适配层
 const mongoose = require('mongoose');
 
-// 构建MongoDB连接字符串
+// 获取MongoDB连接URL
 const getMongoDBURL = () => {
-  const username = 'root';
-  const password = 'Dd112211';
-  const cluster = 'cluster0.rnxc0c4.mongodb.net';
-  const dbName = 'foxpro';
-  
   // 如果有环境变量，优先使用
   if (process.env.MONGODB_URI) {
     return process.env.MONGODB_URI;
   }
+  
+  const username = encodeURIComponent('root');
+  const password = encodeURIComponent('Dd112211');
+  const cluster = 'cluster0.rnxc0c4.mongodb.net';
+  const dbName = 'foxpro';
   
   return `mongodb+srv://${username}:${password}@${cluster}/${dbName}?appName=Cluster0&retryWrites=true&w=majority`;
 };
