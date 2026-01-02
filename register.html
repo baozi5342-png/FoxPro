@@ -471,11 +471,22 @@
         }
 
         console.log('[Register] 注册成功！');
-        document.getElementById('successMsg').textContent = '注册成功！正在跳转到登录页面...';
+        
+        // 保存用户信息和token
+        if (data.token && data.user) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('userToken', data.token);
+          localStorage.setItem('username', data.user.username);
+          localStorage.setItem('userId', data.user.id);
+          localStorage.setItem('email', data.user.email);
+          console.log('[Register] 用户信息已保存到localStorage');
+        }
+        
+        document.getElementById('successMsg').textContent = '注册成功！正在跳转到主页...';
         document.getElementById('successMsg').classList.add('show');
         
         setTimeout(() => {
-          window.location.href = 'login.html';
+          window.location.href = 'index.html';
         }, 1500);
       } catch (error) {
         console.error('[Register] 捕获到异常:', error);
