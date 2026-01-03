@@ -282,45 +282,34 @@ app.get('/api/admin/users', (req, res) => {
     username: u.username,
     email: u.email,
     phone: u.phone,
-    registeredAt: u.createdAt.split('T')[0],
-    status: u.status,
-    kyc_status: u.kyc_status
+    created_at: u.createdAt,
+    status: u.status || 'active',
+    kyc_status: u.kyc_status || 'unverified'
   }));
 
   res.json({ success: true, data: users, total: users.length });
 });
 
 // ============ KYC认证审核（后台）============
-app.get('/api/admin/auth/primary', (req, res) => {
-  const requests = inMemoryData.kyc_requests.filter(k => k.type === 'primary');
+app.get('/api/admin/kyc', (req, res) => {
+  const type = req.query.type || 'primary';
+  const requests = inMemoryData.kyc_requests.filter(k => k.type === type);
   res.json({
     success: true,
     data: requests.map(k => ({
       id: k.id,
-      userId: k.userId,
+      user_id: k.userId,
       username: k.username,
-      name: k.name,
-      idNumber: k.idNumber,
-      idType: k.idType,
+      full_name: k.name,
+      id_number: k.idNumber,
+      id_type: k.idType,
+      residence: k.residence || '-',
       status: k.status,
-      submittedAt: k.submittedAt.split('T')[0]
+      created_at: k.submittedAt
     }))
   });
 });
 
-app.get('/api/admin/auth/advanced', (req, res) => {
-  const requests = inMemoryData.kyc_requests.filter(k => k.type === 'advanced');
-  res.json({
-    success: true,
-    data: requests.map(k => ({
-      id: k.id,
-      userId: k.userId,
-      username: k.username,
-      status: k.status,
-      submittedAt: k.submittedAt.split('T')[0]
-    }))
-  });
-});
 
 // 批准认证
 app.post('/api/admin/auth/approve', (req, res) => {
@@ -402,15 +391,17 @@ app.post('/api/admin/quick-contract/config', (req, res) => {
 });
 
 // 秒合约交易列表（后台）
-app.get('/api/admin/quick-contract/trades', (req, res) => {
+app.get('/api/admin/quick-contract/orders', (req, res) => {
   const trades = inMemoryData.orders.map(o => ({
     id: o.id,
-    userId: o.userId,
+    user_id: o.userId,
     username: o.username,
-    symbol: o.symbol,
+    product: o.symbol,
     amount: o.amount,
-    result: o.result,
-    createdAt: o.createdAt.split('T')[0]
+    direction: o.prediction,
+    period: o.period || '-',
+    status: o.result === 'win' ? '成功' : '失败',
+    created_at: o.createdAt
   }));
   res.json({ success: true, data: trades });
 });
@@ -529,9 +520,43 @@ app.post('/api/exchange/convert', (req, res) => {
   }
 });
 
-// 后台查看兑换记录
-app.get('/api/admin/exchange/records', (req, res) => {
-  res.json({ success: true, data: inMemoryData.exchanges });
+// 后台查看充值订单（带格式化字段）
+app.get('/api/admin/recharge-orders', (req, res) => {
+  const orders = inMemoryData.recharge_orders.map(o => ({
+    id: o.id,
+    user_id: o.userId,
+    username: o.username,
+    amount: o.amount,
+    method: o.method || 'transfer',
+    status: o.status || '待处理',
+    created_at: o.createdAt
+  }));
+  res.json({ success: true, data: orders });
+});
+
+// 后台查看兑换汇率
+app.get('/api/admin/exchange-rates', (req, res) => {
+  const rates = [
+    { id: 1, from_currency: 'USDT', to_currency: 'CNY', rate: 7.2, fee_rate: 0.5, updated_at: new Date().toISOString() },
+    { id: 2, from_currency: 'BTC', to_currency: 'USDT', rate: 45000, fee_rate: 1, updated_at: new Date().toISOString() },
+    { id: 3, from_currency: 'ETH', to_currency: 'USDT', rate: 2500, fee_rate: 1, updated_at: new Date().toISOString() }
+  ];
+  res.json({ success: true, data: rates });
+});
+
+// 后台查看兑换记录（带格式化字段）
+app.get('/api/admin/exchange-records', (req, res) => {
+  const records = inMemoryData.exchanges.map(e => ({
+    id: e.id,
+    user_id: e.userId,
+    username: e.username,
+    from_currency: e.fromSymbol,
+    amount: e.fromAmount,
+    to_currency: e.toSymbol,
+    exchanged_amount: e.toAmount,
+    created_at: e.createdAt
+  }));
+  res.json({ success: true, data: records });
 });
 
 // ============ 充值管理（后台配置 + 前端查询 + 用户申请）============
@@ -586,11 +611,6 @@ app.post('/api/recharge/apply', (req, res) => {
   }
 });
 
-// 后台查看充值订单
-app.get('/api/admin/recharge/orders', (req, res) => {
-  res.json({ success: true, data: inMemoryData.recharge_orders });
-});
-
 // ============ 借贷申请（用户提交 + 后台查看）============
 app.post('/api/lending/apply', (req, res) => {
   try {
@@ -625,9 +645,29 @@ app.post('/api/lending/apply', (req, res) => {
   }
 });
 
-// 后台查看借贷申请
-app.get('/api/admin/lending/requests', (req, res) => {
-  res.json({ success: true, data: inMemoryData.lending_requests });
+// 后台查看借贷产品（带格式化字段）
+app.get('/api/admin/lending-products', (req, res) => {
+  const products = [
+    { id: 1, name: '30天理财', interest_rate: 5, term_days: 30, min_amount: 100 },
+    { id: 2, name: '90天理财', interest_rate: 8, term_days: 90, min_amount: 1000 },
+    { id: 3, name: '180天理财', interest_rate: 12, term_days: 180, min_amount: 5000 }
+  ];
+  res.json({ success: true, data: products });
+});
+
+// 后台查看借贷申请（带格式化字段）
+app.get('/api/admin/lending-requests', (req, res) => {
+  const requests = inMemoryData.lending_requests.map(r => ({
+    id: r.id,
+    user_id: r.userId,
+    username: r.username,
+    product_id: r.productId,
+    amount: r.amount,
+    term_days: r.term || 30,
+    status: r.status || '待审核',
+    created_at: r.appliedAt
+  }));
+  res.json({ success: true, data: requests });
 });
 
 // ============ 提现管理（用户申请 + 后台查看）============
@@ -666,9 +706,18 @@ app.post('/api/withdrawal/apply', (req, res) => {
   }
 });
 
-// 后台查看提现订单
-app.get('/api/admin/withdrawal/orders', (req, res) => {
-  res.json({ success: true, data: inMemoryData.withdrawal_orders });
+// 后台查看提现订单（带格式化字段）
+app.get('/api/admin/withdrawal-orders', (req, res) => {
+  const orders = inMemoryData.withdrawal_orders.map(w => ({
+    id: w.id,
+    user_id: w.userId,
+    username: w.username,
+    amount: w.amount,
+    account: w.address || w.symbol,
+    status: w.status || '待处理',
+    created_at: w.appliedAt
+  }));
+  res.json({ success: true, data: orders });
 });
 
 // 后台批准提现
