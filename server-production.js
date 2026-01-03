@@ -25,6 +25,40 @@ app.use((req, res, next) => {
   next();
 });
 
+// ============ WebSocket (实时双向流) ============
+const WebSocket = require('ws');
+let wss;
+function broadcast(type, payload) {
+  if (!wss) return;
+  const message = JSON.stringify({ type, payload });
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+}
+
+function getStats() {
+  return {
+    totalUsers: inMemoryData.users.length,
+    activeUsers: inMemoryData.users.filter(u => u.status === 'active').length,
+    totalVolume: inMemoryData.orders.length * 100,
+    totalTransactions: inMemoryData.orders.length + inMemoryData.exchanges.length + inMemoryData.recharge_orders.length
+  };
+}
+
+function getFormattedUsers() {
+  return inMemoryData.users.map(u => ({
+    id: u.id,
+    username: u.username,
+    email: u.email,
+    phone: u.phone,
+    created_at: u.createdAt,
+    status: u.status || 'active',
+    kyc_status: u.kyc_status || 'unverified'
+  }));
+}
+
 // ============ 内存数据存储 ============
 let inMemoryData = {
   users: [],
@@ -253,6 +287,8 @@ app.post('/api/auth/submit-kyc/advanced', (req, res) => {
     inMemoryData.kyc_requests.push(kycRequest);
     saveData();
 
+    broadcast('kyc', inMemoryData.kyc_requests);
+
     res.json({ success: true, message: 'Advanced KYC submission successful', kyc: kycRequest });
   } catch (err) {
     console.error('Advanced KYC submit error:', err);
@@ -329,6 +365,11 @@ app.post('/api/admin/auth/approve', (req, res) => {
     }
 
     saveData();
+    // broadcast kyc/users/stats changes
+    broadcast('kyc', inMemoryData.kyc_requests);
+    broadcast('users', getFormattedUsers());
+    broadcast('stats', getStats());
+
     res.json({ success: true, message: 'KYC approved' });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Approval failed' });
@@ -346,6 +387,10 @@ app.post('/api/admin/auth/reject', (req, res) => {
 
     kyc.status = 'rejected';
     saveData();
+    broadcast('kyc', inMemoryData.kyc_requests);
+    broadcast('users', getFormattedUsers());
+    broadcast('stats', getStats());
+
     res.json({ success: true, message: 'KYC rejected' });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Rejection failed' });
@@ -384,6 +429,9 @@ app.post('/api/admin/quick-contract/config', (req, res) => {
     }));
 
     saveData();
+    // broadcast quick contract config change
+    broadcast('quick-contract-config', inMemoryData.quickContractPeriods);
+
     res.json({ success: true, message: 'Config updated', data: inMemoryData.quickContractPeriods });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Update failed' });
@@ -439,6 +487,10 @@ app.post('/api/quick-contract/place-order', (req, res) => {
     inMemoryData.orders.push(order);
     user.balance += profit;
     saveData();
+
+    // broadcast order and stats updates
+    broadcast('orders', inMemoryData.orders);
+    broadcast('stats', getStats());
 
     res.json({ success: true, message: 'Order placed', order });
   } catch (err) {
@@ -513,6 +565,10 @@ app.post('/api/exchange/convert', (req, res) => {
 
     inMemoryData.exchanges.push(exchange);
     saveData();
+
+    // broadcast exchange records and stats
+    broadcast('exchange-records', inMemoryData.exchanges);
+    broadcast('stats', getStats());
 
     res.json({ success: true, message: 'Exchange completed', exchange });
   } catch (err) {
@@ -605,6 +661,10 @@ app.post('/api/recharge/apply', (req, res) => {
     inMemoryData.recharge_orders.push(order);
     saveData();
 
+    // broadcast recharge orders and stats
+    broadcast('recharge-orders', inMemoryData.recharge_orders);
+    broadcast('stats', getStats());
+
     res.json({ success: true, message: 'Recharge request submitted', order });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Recharge request failed' });
@@ -638,6 +698,10 @@ app.post('/api/lending/apply', (req, res) => {
 
     inMemoryData.lending_requests.push(lending);
     saveData();
+
+    // broadcast lending requests and stats
+    broadcast('lending-requests', inMemoryData.lending_requests);
+    broadcast('stats', getStats());
 
     res.json({ success: true, message: 'Lending application submitted', lending });
   } catch (err) {
@@ -700,6 +764,10 @@ app.post('/api/withdrawal/apply', (req, res) => {
     user.balance -= amount;
     saveData();
 
+    // broadcast withdrawal orders and stats
+    broadcast('withdrawal-orders', inMemoryData.withdrawal_orders);
+    broadcast('stats', getStats());
+
     res.json({ success: true, message: 'Withdrawal request submitted', withdrawal });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Withdrawal request failed' });
@@ -734,6 +802,10 @@ app.post('/api/admin/withdrawal/approve', (req, res) => {
     withdrawal.txHash = txHash || 'manual_' + Date.now();
 
     saveData();
+    // broadcast withdrawal orders and stats
+    broadcast('withdrawal-orders', inMemoryData.withdrawal_orders);
+    broadcast('stats', getStats());
+
     res.json({ success: true, message: 'Withdrawal approved', withdrawal });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Approval failed' });
@@ -781,6 +853,42 @@ const server = app.listen(PORT, () => {
 ║ Orders: ${inMemoryData.orders.length.toString().padEnd(38)}║
 ╚════════════════════════════════════════╝
   `);
+});
+
+// 初始化 WebSocket 服务
+wss = new WebSocket.Server({ server, path: '/ws' });
+wss.on('connection', (ws, req) => {
+  console.log('WebSocket client connected');
+
+  // send initial data snapshot
+  try {
+    ws.send(JSON.stringify({ type: 'stats', payload: getStats() }));
+    ws.send(JSON.stringify({ type: 'users', payload: getFormattedUsers() }));
+    ws.send(JSON.stringify({ type: 'kyc', payload: inMemoryData.kyc_requests }));
+    ws.send(JSON.stringify({ type: 'quick-contract-config', payload: inMemoryData.quickContractPeriods }));
+    ws.send(JSON.stringify({ type: 'orders', payload: inMemoryData.orders }));
+    ws.send(JSON.stringify({ type: 'recharge-orders', payload: inMemoryData.recharge_orders }));
+    ws.send(JSON.stringify({ type: 'lending-requests', payload: inMemoryData.lending_requests }));
+    ws.send(JSON.stringify({ type: 'withdrawal-orders', payload: inMemoryData.withdrawal_orders }));
+    ws.send(JSON.stringify({ type: 'exchange-records', payload: inMemoryData.exchanges }));
+  } catch (e) {
+    console.warn('Failed to send initial WS snapshot', e.message);
+  }
+
+  ws.on('message', (msg) => {
+    // allow clients to send simple actions; expect JSON { action: 'reload' } or others
+    try {
+      const data = JSON.parse(msg.toString());
+      if (data && data.action === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong', payload: Date.now() }));
+      }
+      // other actions may be extended as needed
+    } catch (err) {
+      console.warn('Invalid WS message', err.message);
+    }
+  });
+
+  ws.on('close', () => console.log('WebSocket client disconnected'));
 });
 
 process.on('SIGTERM', () => {
