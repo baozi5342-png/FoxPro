@@ -39,7 +39,14 @@ let inMemoryData = {
   },
   recharge_orders: [],  // 充值订单
   lending_requests: [], // 借贷申请
-  withdrawal_orders: [] // 提现订单
+  withdrawal_orders: [], // 提现订单
+  quickContractPeriods: [ // 秒合约周期配置
+    { id: 1, seconds: 30, profitRate: 40 },
+    { id: 2, seconds: 60, profitRate: 50 },
+    { id: 3, seconds: 120, profitRate: 60 },
+    { id: 4, seconds: 180, profitRate: 80 },
+    { id: 5, seconds: 300, profitRate: 100 }
+  ]
 };
 
 let nextUserId = 1;
@@ -356,30 +363,42 @@ app.post('/api/admin/auth/reject', (req, res) => {
   }
 });
 
-// ============ 秒合约配置（后台管理 + 前端查询）============
-app.get('/api/admin/quick-contract/config', (req, res) => {
-  res.json({
-    success: true,
-    config: {
-      minBet: 1,
-      maxBet: 10000,
-      duration: 60,
-      returnRate: 0.85
-    }
-  });
-});
-
+// ============ 秒合约配置管理 ============
 // 前端查询秒合约配置
 app.get('/api/quick-contract/config', (req, res) => {
   res.json({
     success: true,
-    config: {
-      minBet: 1,
-      maxBet: 10000,
-      duration: 60,
-      returnRate: 0.85
-    }
+    data: inMemoryData.quickContractPeriods
   });
+});
+
+// 后台查询秒合约配置
+app.get('/api/admin/quick-contract/config', (req, res) => {
+  res.json({
+    success: true,
+    data: inMemoryData.quickContractPeriods
+  });
+});
+
+// 后台更新秒合约配置
+app.post('/api/admin/quick-contract/config', (req, res) => {
+  try {
+    const { periods } = req.body;
+    if (!Array.isArray(periods) || periods.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid periods data' });
+    }
+
+    inMemoryData.quickContractPeriods = periods.map((p, idx) => ({
+      id: p.id || idx + 1,
+      seconds: p.seconds,
+      profitRate: p.profitRate
+    }));
+
+    saveData();
+    res.json({ success: true, message: 'Config updated', data: inMemoryData.quickContractPeriods });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Update failed' });
+  }
 });
 
 // 秒合约交易列表（后台）

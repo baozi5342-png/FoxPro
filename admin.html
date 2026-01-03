@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FoxPro 后台管理系统</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #111827;
+      --border: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --primary: #3b82f6;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --gap: 16px;
+      --radius: 12px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    /* ========== 顶部导航 ========== */
+    .topbar {
+      background: linear-gradient(90deg, #1f2937 0%, #111827 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .topbar-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 30px;
+    }
+
+    .topbar-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      list-style: none;
+    }
+
+    .nav-tab {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .nav-tab:hover {
+      color: var(--text);
+      border-color: var(--primary);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .nav-tab.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    /* ========== 主容器 ========== */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+
+    /* ========== 区域 ========== */
+    .section {
+      display: none;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .section-header {
+      margin-bottom: 30px;
+    }
+
+    .section-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .section-subtitle {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ========== 统计卡片 ========== */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: var(--gap);
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    /* ========== 卡片 ========== */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title::before {
+      content: '';
+      width: 3px;
+      height: 24px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    /* ========== 表单 ========== */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: var(--gap);
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .form-group input::placeholder,
+    .form-group select::placeholder,
+    .form-group textarea::placeholder {
+      color: var(--muted);
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    /* ========== 按钮 ========== */
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+
+    .btn-secondary {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: #374151;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* ========== 表格 ========== */
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--panel);
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    table th {
+      background: rgba(59, 130, 246, 0.1);
+      border-bottom: 2px solid var(--border);
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+
+    table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    table tr:hover {
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* ========== 标签 ========== */
+    .tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .tag-success {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+    }
+
+    .tag-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+    }
+
+    .tag-warning {
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--warning);
+    }
+
+    .tag-primary {
+      background: rgba(59, 130, 246, 0.2);
+      color: var(--primary);
+    }
+
+    /* ========== 标签选项卡 ========== */
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 20px;
+      gap: 0;
+      list-style: none;
+    }
+
+    .tab-button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 12px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .tab-button:hover {
+      color: var(--text);
+    }
+
+    .tab-button.active {
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* ========== 提示 ========== */
+    .alert {
+      padding: 16px;
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      border-left: 4px solid;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border-color: var(--success);
+    }
+
+    .alert-error {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+
+    .alert-info {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    /* ========== 空状态 ========== */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    /* ========== 响应式设计 ========== */
+    @media (max-width: 1024px) {
+      .topbar-content {
+        gap: 16px;
+      }
+
+      .nav-tabs {
+        gap: 6px;
+      }
+
+      .nav-tab {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+
+      .stat-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+      }
+
+      .stat-card {
+        padding: 16px;
+      }
+
+      .stat-value {
+        font-size: 28px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .topbar-content {
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .nav-tabs {
+        width: 100%;
+        flex-direction: column;
+      }
+
+      .nav-tab {
+        width: 100%;
+      }
+
+      .container {
+        padding: 20px 16px;
+      }
+
+      .card {
+        padding: 16px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      table {
+        font-size: 12px;
+      }
+
+      table th,
+      table td {
+        padding: 8px 12px;
+      }
+
+      .btn-group {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航栏 -->
+  <div class="topbar">
+    <div class="topbar-content">
+      <div class="topbar-title">📊 FoxPro 后台管理</div>
+      <ul class="nav-tabs">
+        <li class="nav-tab active" onclick="switchSection('dashboard', this)">仪表板</li>
+        <li class="nav-tab" onclick="switchSection('users', this)">用户管理</li>
+        <li class="nav-tab" onclick="switchSection('kyc', this)">KYC认证</li>
+        <li class="nav-tab" onclick="switchSection('products', this)">产品管理</li>
+        <li class="nav-tab" onclick="switchSection('quick-contract', this)">快速合约</li>
+        <li class="nav-tab" onclick="switchSection('recharge', this)">充值管理</li>
+        <li class="nav-tab" onclick="switchSection('lending', this)">借贷管理</li>
+        <li class="nav-tab" onclick="switchSection('exchange', this)">兑换管理</li>
+        <li class="nav-tab" onclick="switchSection('withdrawal', this)">提现管理</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 主容器 -->
+  <div class="container">
+    <!-- 仪表板 -->
+    <div id="dashboard" class="section active">
+      <div class="section-header">
+        <div class="section-title">仪表板</div>
+        <div class="section-subtitle">实时数据概览</div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">用户总数</div>
+          <div class="stat-value" id="stat-users">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">订单总数</div>
+          <div class="stat-value" id="stat-orders">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">KYC请求</div>
+          <div class="stat-value" id="stat-kyc">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">充值订单</div>
+          <div class="stat-value" id="stat-recharge">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">借贷请求</div>
+          <div class="stat-value" id="stat-lending">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">提现订单</div>
+          <div class="stat-value" id="stat-withdrawal">0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">快速合约配置</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>周期名称</label>
+            <input type="text" id="periodName" placeholder="例如: 5分钟" />
+          </div>
+          <div class="form-group">
+            <label>周期值（分钟）</label>
+            <input type="number" id="periodValue" placeholder="5" />
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="addQuickContractPeriod()">添加周期</button>
+          <button class="btn btn-secondary" onclick="loadQuickContractConfig()">刷新配置</button>
+        </div>
+        <div style="margin-top: 20px;">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>周期名称</th>
+                  <th>周期值</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="quickContractTable">
+                <tr>
+                  <td colspan="3" style="text-align: center; color: var(--muted);">无数据</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 用户管理 -->
+    <div id="users" class="section">
+      <div class="section-header">
+        <div class="section-title">用户管理</div>
+        <div class="section-subtitle">管理平台所有用户</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">用户列表</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>用户名</th>
+                <th>邮箱</th>
+                <th>电话</th>
+                <th>状态</th>
+                <th>注册时间</th>
+              </tr>
+            </thead>
+            <tbody id="usersTable">
+              <tr>
+                <td colspan="6" style="text-align: center; color: var(--muted);">加载中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- KYC认证 -->
+    <div id="kyc" class="section">
+      <div class="section-header">
+        <div class="section-title">KYC认证管理</div>
+        <div class="section-subtitle">管理用户身份认证</div>
+      </div>
+
+      <ul class="tabs">
+        <li><button class="tab-button active" onclick="switchKYCTab('primary', this)">初级认证</button></li>
+        <li><button class="tab-button" onclick="switchKYCTab('advanced', this)">高级认证</button></li>
+      </ul>
+
+      <!-- 初级认证 -->
+      <div id="kyc-primary" class="tab-content active">
+        <div class="card">
+          <div class="card-title">初级认证请求</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>用户</th>
+                  <th>姓名</th>
+                  <th>身份证</th>
+                  <th>状态</th>
+                  <th>申请时间</th>
+                </tr>
+              </thead>
+              <tbody id="primaryKYCTable">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--muted);">加载中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 高级认证 -->
+      <div id="kyc-advanced" class="tab-content">
+        <div class="card">
+          <div class="card-title">高级认证请求</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>用户</th>
+                  <th>姓名</th>
+                  <th>居住地</th>
+                  <th>状态</th>
+                  <th>申请时间</th>
+                </tr>
+              </thead>
+              <tbody id="advancedKYCTable">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--muted);">加载中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 产品管理 -->
+    <div id="products" class="section">
+      <div class="section-header">
+        <div class="section-title">产品管理</div>
+        <div class="section-subtitle">管理交易产品</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">添加产品</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>产品名称</label>
+            <input type="text" id="productName" placeholder="例如: BTC/USD" />
+          </div>
+          <div class="form-group">
+            <label>产品代码</label>
+            <input type="text" id="productCode" placeholder="例如: BTCUSD" />
+          </div>
+          <div class="form-group">
+            <label>初始价格</label>
+            <input type="number" id="productPrice" placeholder="0.00" step="0.01" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addProduct()">添加产品</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">产品列表</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>产品名</th>
+                <th>代码</th>
+                <th>价格</th>
+                <th>创建时间</th>
+              </tr>
+            </thead>
+            <tbody id="productsTable">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--muted);">加载中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 快速合约 -->
+    <div id="quick-contract" class="section">
+      <div class="section-header">
+        <div class="section-title">快速合约管理</div>
+        <div class="section-subtitle">管理合约配置和订单</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">快速合约订单</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>用户</th>
+                <th>产品</th>
+                <th>金额</th>
+                <th>周期</th>
+                <th>方向</th>
+                <th>状态</th>
+                <th>创建时间</th>
+              </tr>
+            </thead>
+            <tbody id="quickContractOrdersTable">
+              <tr>
+                <td colspan="8" style="text-align: center; color: var(--muted);">加载中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 充值管理 -->
+    <div id="recharge" class="section">
+      <div class="section-header">
+        <div class="section-title">充值管理</div>
+        <div class="section-subtitle">管理用户充值订单</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">充值订单列表</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>用户</th>
+                <th>金额</th>
+                <th>方式</th>
+                <th>状态</th>
+                <th>创建时间</th>
+              </tr>
+            </thead>
+            <tbody id="rechargeTable">
+              <tr>
+                <td colspan="6" style="text-align: center; color: var(--muted);">加载中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 借贷管理 -->
+    <div id="lending" class="section">
+      <div class="section-header">
+        <div class="section-title">借贷管理</div>
+        <div class="section-subtitle">管理借贷产品和请求</div>
+      </div>
+
+      <ul class="tabs">
+        <li><button class="tab-button active" onclick="switchLendingTab('products', this)">借贷产品</button></li>
+        <li><button class="tab-button" onclick="switchLendingTab('requests', this)">借贷请求</button></li>
+      </ul>
+
+      <!-- 借贷产品 -->
+      <div id="lending-products" class="tab-content active">
+        <div class="card">
+          <div class="card-title">借贷产品列表</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>产品名</th>
+                  <th>利率</th>
+                  <th>期限</th>
+                  <th>最小金额</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody id="lendingProductsTable">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--muted);">加载中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 借贷请求 -->
+      <div id="lending-requests" class="tab-content">
+        <div class="card">
+          <div class="card-title">借贷请求列表</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>用户</th>
+                  <th>产品</th>
+                  <th>金额</th>
+                  <th>期限</th>
+                  <th>状态</th>
+                  <th>申请时间</th>
+                </tr>
+              </thead>
+              <tbody id="lendingRequestsTable">
+                <tr>
+                  <td colspan="7" style="text-align: center; color: var(--muted);">加载中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 兑换管理 -->
+    <div id="exchange" class="section">
+      <div class="section-header">
+        <div class="section-title">兑换管理</div>
+        <div class="section-subtitle">管理货币兑换</div>
+      </div>
+
+      <ul class="tabs">
+        <li><button class="tab-button active" onclick="switchExchangeTab('rates', this)">汇率配置</button></li>
+        <li><button class="tab-button" onclick="switchExchangeTab('records', this)">兑换记录</button></li>
+      </ul>
+
+      <!-- 汇率配置 -->
+      <div id="exchange-rates" class="tab-content active">
+        <div class="card">
+          <div class="card-title">汇率列表</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>源币种</th>
+                  <th>目标币种</th>
+                  <th>汇率</th>
+                  <th>费率</th>
+                  <th>更新时间</th>
+                </tr>
+              </thead>
+              <tbody id="exchangeRatesTable">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--muted);">加载中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 兑换记录 -->
+      <div id="exchange-records" class="tab-content">
+        <div class="card">
+          <div class="card-title">兑换记录</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>用户</th>
+                  <th>源币种</th>
+                  <th>金额</th>
+                  <th>目标币种</th>
+                  <th>兑换金额</th>
+                  <th>创建时间</th>
+                </tr>
+              </thead>
+              <tbody id="exchangeRecordsTable">
+                <tr>
+                  <td colspan="7" style="text-align: center; color: var(--muted);">加载中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 提现管理 -->
+    <div id="withdrawal" class="section">
+      <div class="section-header">
+        <div class="section-title">提现管理</div>
+        <div class="section-subtitle">管理用户提现订单</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">提现订单列表</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>用户</th>
+                <th>金额</th>
+                <th>账户</th>
+                <th>状态</th>
+                <th>申请时间</th>
+              </tr>
+            </thead>
+            <tbody id="withdrawalTable">
+              <tr>
+                <td colspan="6" style="text-align: center; color: var(--muted);">加载中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3000/api';
+
+    // 切换显示的区域
+    function switchSection(sectionId, element) {
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+      });
+      document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+
+      document.getElementById(sectionId).classList.add('active');
+      element.classList.add('active');
+
+      // 加载相关数据
+      loadSectionData(sectionId);
+    }
+
+    // 切换KYC标签
+    function switchKYCTab(tabName, element) {
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        if (btn.parentElement.parentElement.id === 'kyc') {
+          btn.classList.remove('active');
+        }
+      });
+      document.querySelectorAll('[id^="kyc-"]').forEach(content => {
+        content.classList.remove('active');
+      });
+
+      element.classList.add('active');
+      document.getElementById(`kyc-${tabName}`).classList.add('active');
+      loadKYCData(tabName);
+    }
+
+    // 切换借贷标签
+    function switchLendingTab(tabName, element) {
+      document.querySelectorAll('#lending .tab-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.querySelectorAll('[id^="lending-"]').forEach(content => {
+        content.classList.remove('active');
+      });
+
+      element.classList.add('active');
+      document.getElementById(`lending-${tabName}`).classList.add('active');
+      loadLendingData(tabName);
+    }
+
+    // 切换兑换标签
+    function switchExchangeTab(tabName, element) {
+      document.querySelectorAll('#exchange .tab-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.querySelectorAll('[id^="exchange-"]').forEach(content => {
+        content.classList.remove('active');
+      });
+
+      element.classList.add('active');
+      document.getElementById(`exchange-${tabName}`).classList.add('active');
+      if (tabName === 'rates') {
+        loadExchangeRates();
+      } else {
+        loadExchangeRecords();
+      }
+    }
+
+    // 加载区域数据
+    async function loadSectionData(sectionId) {
+      switch(sectionId) {
+        case 'dashboard':
+          loadDashboardStats();
+          loadQuickContractConfig();
+          break;
+        case 'users':
+          loadUsers();
+          break;
+        case 'kyc':
+          loadKYCData('primary');
+          break;
+        case 'products':
+          loadProducts();
+          break;
+        case 'quick-contract':
+          loadQuickContractOrders();
+          break;
+        case 'recharge':
+          loadRechargeOrders();
+          break;
+        case 'lending':
+          loadLendingData('products');
+          break;
+        case 'exchange':
+          loadExchangeRates();
+          break;
+        case 'withdrawal':
+          loadWithdrawalOrders();
+          break;
+      }
+    }
+
+    // 加载仪表板统计
+    async function loadDashboardStats() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/stats`);
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          document.getElementById('stat-users').textContent = result.data.users || 0;
+          document.getElementById('stat-orders').textContent = result.data.orders || 0;
+          document.getElementById('stat-kyc').textContent = result.data.kyc_requests || 0;
+          document.getElementById('stat-recharge').textContent = result.data.recharge_orders || 0;
+          document.getElementById('stat-lending').textContent = result.data.lending_requests || 0;
+          document.getElementById('stat-withdrawal').textContent = result.data.withdrawal_orders || 0;
+        }
+      } catch (error) {
+        console.error('加载统计数据失败:', error);
+      }
+    }
+
+    // 加载用户列表
+    async function loadUsers() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/users`);
+        const result = await response.json();
+
+        const tbody = document.getElementById('usersTable');
+        tbody.innerHTML = '';
+
+        if (result.success && result.data && result.data.length > 0) {
+          result.data.forEach(user => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${user.id || '-'}</td>
+                <td>${user.username || '-'}</td>
+                <td>${user.email || '-'}</td>
+                <td>${user.phone || '-'}</td>
+                <td><span class="tag tag-success">正常</span></td>
+                <td>${user.created_at || '-'}</td>
+              </tr>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">无数据</td></tr>';
+        }
+      } catch (error) {
+        console.error('加载用户列表失败:', error);
+      }
+    }
+
+    // 加载KYC数据
+    async function loadKYCData(type) {
+      try {
+        const response = await fetch(`${API_BASE}/admin/kyc?type=${type}`);
+        const result = await response.json();
+
+        const tableId = type === 'primary' ? 'primaryKYCTable' : 'advancedKYCTable';
+        const tbody = document.getElementById(tableId);
+        tbody.innerHTML = '';
+
+        if (result.success && result.data && result.data.length > 0) {
+          result.data.forEach(kyc => {
+            if (type === 'primary') {
+              tbody.innerHTML += `
+                <tr>
+                  <td>${kyc.id || '-'}</td>
+                  <td>${kyc.user_id || '-'}</td>
+                  <td>${kyc.full_name || '-'}</td>
+                  <td>${kyc.id_number || '-'}</td>
+                  <td><span class="tag tag-primary">${kyc.status || '待审核'}</span></td>
+                  <td>${kyc.created_at || '-'}</td>
+                </tr>
+              `;
+            } else {
+              tbody.innerHTML += `
+                <tr>
+                  <td>${kyc.id || '-'}</td>
+                  <td>${kyc.user_id || '-'}</td>
+                  <td>${kyc.full_name || '-'}</td>
+                  <td>${kyc.residence || '-'}</td>
+                  <td><span class="tag tag-primary">${kyc.status || '待审核'}</span></td>
+                  <td>${kyc.created_at || '-'}</td>
+                </tr>
+              `;
+            }
+          });
+        } else {
+          tbody.innerHTML = `<tr><td colspan="${type === 'primary' ? 6 : 6}" style="text-align: center; color: var(--muted);">无数据</td></tr>`;
+        }
+      } catch (error) {
+        console.error(`加载${type === 'primary' ? '初级' : '高级'}KYC数据失败:`, error);
+      }
+    }
+
+    // 加载产品列表
+    async function loadProducts() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/products`);
+        const result = await response.json();
+
+        const tbody = document.getElementById('productsTable');
+        tbody.innerHTML = '';
+
+        if (result.success && result.data && result.data.length > 0) {
+          result.data.forEach(product => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${product.id || '-'}</td>
+                <td>${product.name || '-'}</td>
+                <td>${product.code || '-'}</td>
+                <td>$${product.price || '0'}</td>
+                <td>${product.created_at || '-'}</td>
+              </tr>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted);">无数据</td></tr>';
+        }
+      } catch (error) {
+        console.error('加载产品列表失败:', error);
+      }
+    }
+
+    // 添加产品
+    async function addProduct() {
+      const name = document.getElementById('productName').value;
+      const code = document.getElementById('productCode').value;
+      const price = document.getElementById('productPrice').value;
+
+      if (!name || !code || !price) {
+        alert('请填写所有字段');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, code, price: parseFloat(price) })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          alert('产品添加成功');
+          document.getElementById('productName').value = '';
+          document.getElementById('productCode').value = '';
+          document.getElementById('productPrice').value = '';
+          loadProducts();
+        } else {
+          alert('产品添加失败: ' + (result.message || '未知错误'));
+        }
+      } catch (error) {
+        console.error('添加产品失败:', error);
+        alert('添加产品失败');
+      }
+    }
+
+    // 加载快速合约配置
+    async function loadQuickContractConfig() {
+      try {
+        const response = await fetch(`${API_BASE}/quick-contract/config`);
+        const result = await response.json();
+
+        const tbody = document.getElementById('quickContractTable');
+        tbody.innerHTML = '';
+
+        if (result.success && result.data && result.data.periods && result.data.periods.length > 0) {
+          result.data.periods.forEach(period => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${period.name}</td>
+                <td>${period.value} 分钟</td>
+                <td>
+                  <button class="btn btn-small btn-danger" onclick="deleteQuickContractPeriod(${period.value})">删除</button>
+                </td>
+              </tr>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--muted);">无数据</td></tr>';
+        }
+      } catch (error) {
+        console.error('加载快速合约配置失败:', error);
+      }
+    }
+
+    // 添加快速合约周期
+    async function addQuickContractPeriod() {
+      const name = document.getElementById('periodName').value;
+      const value = document.getElementById('periodValue').value;
+
+      if (!name || !value) {
+        alert('请填写所有字段');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/quick-contract/period`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, value: parseInt(value) })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          alert('周期添加成功');
+          document.getElementById('periodName').value = '';
+          document.getElementById('periodValue').value = '';
+          loadQuickContractConfig();
+        } else {
+          alert('周期添加失败: ' + (result.message || '未知错误'));
+        }
+      } catch (error) {
+        console.error('添加周期失败:', error);
+        alert('添加周期失败');
+      }
+    }
+
+    // 删除快速合约周期
+    async function deleteQuickContractPeriod(value) {
+      if (!confirm('确定要删除这个周期吗?')) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/quick-contract/period/${value}`, {
+          method: 'DELETE'
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          alert('周期删除成功');
+          loadQuickContractConfig();
+        } else {
+          alert('周期删除失败: ' + (result.message || '未知错误'));
+        }
+      } catch (error) {
+        console.error('删除周期失败:', error);
+        alert('删除周期失败');
+      }
+    }
+
+    // 加载快速合约订单
+    async function loadQuickContractOrders() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/quick-contract/orders`);
+        const result = await response.json();
+
+        const tbody = document.getElementById('quickContractOrdersTable');
+        tbody.innerHTML = '';
+
+        if (result.success && result.data && result.data.length > 0) {
+          result.data.forEach(order => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${order.id || '-'}</td>
+                <td>${order.user_id || '-'}</td>
+                <td>${order.product || '-'}</td>
+                <td>$${order.amount || '0'}</td>
+                <td>${order.period || '-'}</td>
+                <td><span class="tag tag-primary">${order.direction || '-'}</span></td>
+                <td><span class="tag tag-warning">${order.status || '进行中'}</span></td>
+                <td>${order.created_at || '-'}</td>
+              </tr>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--muted);">无数据</td></tr>';
+        }
+      } catch (error) {
+        console.error('加载快速合约订单失败:', error);
+      }
+    }
+
+    // 加载充值订单
+    async function loadRechargeOrders() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/recharge-orders`);
+        const result = await response.json();
+
+        const tbody = document.getElementById('rechargeTable');
+        tbody.innerHTML = '';
+
+        if (result.success && result.data && result.data.length > 0) {
+          result.data.forEach(order => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${order.id || '-'}</td>
+                <td>${order.user_id || '-'}</td>
+                <td>$${order.amount || '0'}</td>
+                <td>${order.method || '-'}</td>
+                <td><span class="tag tag-warning">${order.status || '待处理'}</span></td>
+                <td>${order.created_at || '-'}</td>
+              </tr>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">无数据</td></tr>';
+        }
+      } catch (error) {
+        console.error('加载充值订单失败:', error);
+      }
+    }
+
+    // 加载借贷数据
+    async function loadLendingData(type) {
+      if (type === 'products') {
+        loadLendingProducts();
+      } else {
+        loadLendingRequests();
+      }
+    }
+
+    // 加载借贷产品
+    async function loadLendingProducts() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/lending-products`);
+        const result = await response.json();
+
+        const tbody = document.getElementById('lendingProductsTable');
+        tbody.innerHTML = '';
+
+        if (result.success && result.data && result.data.length > 0) {
+          result.data.forEach(product => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${product.id || '-'}</td>
+                <td>${product.name || '-'}</td>
+                <td>${product.interest_rate || '0'}%</td>
+                <td>${product.term_days || '-'} 天</td>
+                <td>$${product.min_amount || '0'}</td>
+                <td><span class="tag tag-success">启用</span></td>
+              </tr>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">无数据</td></tr>';
+        }
+      } catch (error) {
+        console.error('加载借贷产品失败:', error);
+      }
+    }
+
+    // 加载借贷请求
+    async function loadLendingRequests() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/lending-requests`);
+        const result = await response.json();
+
+        const tbody = document.getElementById('lendingRequestsTable');
+        tbody.innerHTML = '';
+
+        if (result.success && result.data && result.data.length > 0) {
+          result.data.forEach(request => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${request.id || '-'}</td>
+                <td>${request.user_id || '-'}</td>
+                <td>${request.product_id || '-'}</td>
+                <td>$${request.amount || '0'}</td>
+                <td>${request.term_days || '-'} 天</td>
+                <td><span class="tag tag-warning">${request.status || '待审核'}</span></td>
+                <td>${request.created_at || '-'}</td>
+              </tr>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--muted);">无数据</td></tr>';
+        }
+      } catch (error) {
+        console.error('加载借贷请求失败:', error);
+      }
+    }
+
+    // 加载兑换汇率
+    async function loadExchangeRates() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/exchange-rates`);
+        const result = await response.json();
+
+        const tbody = document.getElementById('exchangeRatesTable');
+        tbody.innerHTML = '';
+
+        if (result.success && result.data && result.data.length > 0) {
+          result.data.forEach(rate => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${rate.id || '-'}</td>
+                <td>${rate.from_currency || '-'}</td>
+                <td>${rate.to_currency || '-'}</td>
+                <td>${rate.rate || '0'}</td>
+                <td>${rate.fee_rate || '0'}%</td>
+                <td>${rate.updated_at || '-'}</td>
+              </tr>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">无数据</td></tr>';
+        }
+      } catch (error) {
+        console.error('加载兑换汇率失败:', error);
+      }
+    }
+
+    // 加载兑换记录
+    async function loadExchangeRecords() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/exchange-records`);
+        const result = await response.json();
+
+        const tbody = document.getElementById('exchangeRecordsTable');
+        tbody.innerHTML = '';
+
+        if (result.success && result.data && result.data.length > 0) {
+          result.data.forEach(record => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${record.id || '-'}</td>
+                <td>${record.user_id || '-'}</td>
+                <td>${record.from_currency || '-'}</td>
+                <td>$${record.amount || '0'}</td>
+                <td>${record.to_currency || '-'}</td>
+                <td>$${record.exchanged_amount || '0'}</td>
+                <td>${record.created_at || '-'}</td>
+              </tr>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--muted);">无数据</td></tr>';
+        }
+      } catch (error) {
+        console.error('加载兑换记录失败:', error);
+      }
+    }
+
+    // 加载提现订单
+    async function loadWithdrawalOrders() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/withdrawal-orders`);
+        const result = await response.json();
+
+        const tbody = document.getElementById('withdrawalTable');
+        tbody.innerHTML = '';
+
+        if (result.success && result.data && result.data.length > 0) {
+          result.data.forEach(order => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${order.id || '-'}</td>
+                <td>${order.user_id || '-'}</td>
+                <td>$${order.amount || '0'}</td>
+                <td>${order.account || '-'}</td>
+                <td><span class="tag tag-warning">${order.status || '待处理'}</span></td>
+                <td>${order.created_at || '-'}</td>
+              </tr>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">无数据</td></tr>';
+        }
+      } catch (error) {
+        console.error('加载提现订单失败:', error);
+      }
+    }
+
+    // 初始化
+    window.addEventListener('load', () => {
+      loadDashboardStats();
+      loadQuickContractConfig();
+    });
+
+    // 定时刷新数据
+    setInterval(() => {
+      const activeSection = document.querySelector('.section.active');
+      if (activeSection) {
+        loadSectionData(activeSection.id);
+      }
+    }, 5000);
+  </script>
+</body>
+</html>

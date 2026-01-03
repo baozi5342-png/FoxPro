@@ -261,16 +261,16 @@
       <!-- Deposit Form -->
       <div id="deposit-tab" style="display: block;">
         <div class="form-card">
-          <h3>💰 选择充值币种</h3>
+          <h3>💰 选择充值币�?/h3>
           <div class="form-group">
             <label>币种</label>
             <select id="coinSelect" onchange="updateCoinInfo()">
-              <option value="">加载中...</option>
+              <option value="">加载�?..</option>
             </select>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>充值网络</label>
+              <label>充值网�?/label>
               <input type="text" id="networkDisplay" disabled value="-" style="background: var(--panel-2); cursor: not-allowed;" />
             </div>
             <div class="form-group">
@@ -286,7 +286,7 @@
           <div style="text-align: center; margin-bottom: 20px;">
             <div id="qrCodeContainer" style="display: inline-block; padding: 20px; background: var(--panel-2); border-radius: 8px; min-width: 250px;">
               <img id="qrCode" src="" alt="QR Code" style="width: 200px; height: 200px; border: 2px solid var(--border); border-radius: 4px; display: none;" />
-              <div id="qrPlaceholder" style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; color: var(--muted);">选择币种显示二维码</div>
+              <div id="qrPlaceholder" style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; color: var(--muted);">选择币种显示二维�?/div>
             </div>
           </div>
           <div class="form-group">
@@ -298,12 +298,12 @@
           </div>
         </div>
 
-        <!-- 充值金额 -->
+        <!-- 充值金�?-->
         <div class="form-card">
-          <h3>📊 充值数量</h3>
+          <h3>📊 充值数�?/h3>
           <div class="form-group">
-            <label>充值金额</label>
-            <input type="number" id="rechargeAmount" placeholder="输入充值数量" step="0.00000001" min="0" />
+            <label>充值金�?/label>
+            <input type="number" id="rechargeAmount" placeholder="输入充值数�? step="0.00000001" min="0" />
           </div>
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
             <button class="quick-amount-btn" onclick="setRechargeAmount(0.1)">0.1</button>
@@ -313,9 +313,9 @@
           </div>
         </div>
 
-        <!-- 提交充值 -->
+        <!-- 提交充�?-->
         <div class="form-card">
-          <h3>✅ 确认充值</h3>
+          <h3>�?确认充�?/h3>
           <div style="background: var(--panel-2); padding: 15px; border-radius: 6px; margin-bottom: 16px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
               <span style="color: var(--muted);">币种</span>
@@ -330,20 +330,20 @@
               <span style="color: var(--text); font-weight: 600;" id="confirmNetwork">-</span>
             </div>
           </div>
-          <button class="submit-btn" onclick="submitRecharge()">✅ 提交充值申请</button>
+          <button class="submit-btn" onclick="submitRecharge()">�?提交充值申�?/button>
         </div>
 
         <!-- 重要提示 -->
         <div class="form-card">
           <h3>⚠️ 重要提示</h3>
           <div class="deposit-info">
-            <strong>选择正确的网络：</strong> 使用错误的网络可能导致资金永久丧失。请确保选择与发送地址相同的网络。
+            <strong>选择正确的网络：</strong> 使用错误的网络可能导致资金永久丧失。请确保选择与发送地址相同的网络�?
           </div>
           <div class="deposit-info">
             <strong>最小充值金额：</strong> <span id="minAmountDisplay">-</span>
           </div>
           <div class="deposit-info">
-            <strong>到账时间：</strong> 通常在区块链确认后 10-30 分钟内到账。
+            <strong>到账时间�?/strong> 通常在区块链确认�?10-30 分钟内到账�?
           </div>
           <div class="deposit-info">
             <strong>有问题？</strong> 请联系我们的<a href="customer-support.html" style="color: var(--primary); text-decoration: underline;">客服中心</a>
@@ -354,12 +354,12 @@
       <!-- Deposit History -->
       <div id="history-tab" style="display: none;">
         <div class="form-card">
-          <h3>💳 充值记录</h3>
+          <h3>💳 充值记�?/h3>
           <div style="margin-bottom: 15px;">
             <button class="submit-btn" onclick="loadMyRechargeOrders()" style="background: var(--primary); margin: 0; width: auto; padding: 8px 16px;">🔄 刷新记录</button>
           </div>
           <div class="deposit-list" id="rechargeOrdersList">
-            <div style="text-align: center; color: var(--muted); padding: 20px;">加载中...</div>
+            <div style="text-align: center; color: var(--muted); padding: 20px;">加载�?..</div>
           </div>
         </div>
       </div>
@@ -430,7 +430,7 @@
         document.getElementById('confirmNetwork').textContent = currentConfig.network;
         document.getElementById('depositAddress').value = currentConfig.address;
         
-        // 显示二维码
+        // 显示二维�?
         if (currentConfig.qrCodeUrl) {
           const qrImg = document.getElementById('qrCode');
           qrImg.src = currentConfig.qrCodeUrl;
@@ -456,7 +456,7 @@
         const address = document.getElementById('depositAddress').value;
         if (address && address !== '-') {
           navigator.clipboard.writeText(address).then(() => {
-            alert('✓ 地址已复制到剪贴板');
+            alert('�?地址已复制到剪贴�?);
           }).catch(() => {
             alert('复制失败，请手动复制');
           });
@@ -500,16 +500,16 @@
 
           const data = await res.json();
           if (data.success) {
-            alert(`✓ 充值申请已提交！订单ID: ${data.data.id}`);
+            alert(`�?充值申请已提交！订单ID: ${data.data.id}`);
             document.getElementById('rechargeAmount').value = '';
             document.getElementById('confirmAmount').textContent = '0';
             setTimeout(() => loadMyRechargeOrders(), 500);
           } else {
-            alert('✗ 提交失败：' + (data.error || data.message));
+            alert('�?提交失败�? + (data.error || data.message));
           }
         } catch (err) {
           console.error('Error:', err);
-          alert('提交失败，请检查网络连接');
+          alert('提交失败，请检查网络连�?);
         }
       }
 
@@ -529,20 +529,20 @@
           const container = document.getElementById('rechargeOrdersList');
           if (data.success && Array.isArray(data.data)) {
             if (data.data.length === 0) {
-              container.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 20px;">暂无充值记录</div>';
+              container.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 20px;">暂无充值记�?/div>';
             } else {
               container.innerHTML = data.data.map(order => {
                 let statusClass = '';
                 let statusText = '';
                 if (order.status === 'pending') {
                   statusClass = 'confirmed';
-                  statusText = '⏳ 待确认';
+                  statusText = '�?待确�?;
                 } else if (order.status === 'completed') {
                   statusClass = 'success';
-                  statusText = '✓ 已完成';
+                  statusText = '�?已完�?;
                 } else if (order.status === 'rejected') {
                   statusClass = 'rejected';
-                  statusText = '✗ 已拒绝';
+                  statusText = '�?已拒�?;
                 }
 
                 return `
@@ -550,7 +550,7 @@
                     <div class="deposit-item-left">
                       <div class="deposit-item-title">${order.coin} - ${order.network || 'mainnet'}</div>
                       <div class="deposit-item-time">${new Date(order.createdAt).toLocaleString('zh-CN')}</div>
-                      ${order.txHash ? `<div style="margin-top: 8px; font-size: 11px; color: var(--muted); word-break: break-all;"><strong>TxHash：</strong> ${order.txHash}</div>` : ''}
+                      ${order.txHash ? `<div style="margin-top: 8px; font-size: 11px; color: var(--muted); word-break: break-all;"><strong>TxHash�?/strong> ${order.txHash}</div>` : ''}
                     </div>
                     <div class="deposit-item-amount">
                       <div class="deposit-item-value">+${parseFloat(order.amount).toFixed(6)} ${order.coin}</div>
@@ -619,3 +619,4 @@
     </script>
   </body>
 </html>
+
