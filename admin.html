@@ -141,98 +141,105 @@
     }
 
     .section.active {
-      display: grid;
-      grid-template-columns: 1fr 1.5fr;
+      display: flex;
+      flex-wrap: wrap;
       gap: 30px;
-      align-items: start;
+      align-items: flex-start;
     }
 
-    /* Section 中的元素继承网格布局 */
+    /* Section 中的元素继承布局 */
     .section.active > .section-title {
-      grid-column: 1 / -1;
-      margin-bottom: 30px;
+      width: 100%;
+      margin-bottom: 0;
     }
 
     .section.active > .card {
-      grid-column: 1;
+      flex: 0 0 calc(33.333% - 20px);
+      min-width: 300px;
     }
 
     .section.active > .table-container {
-      grid-column: 2;
+      flex: 1 1 calc(66.667% - 20px);
+      min-width: 500px;
     }
 
     .section.active > .card:only-of-type {
-      grid-column: 1 / -1;
+      flex: 1 1 100%;
     }
 
     .section.active > .table-container:only-of-type {
-      grid-column: 1 / -1;
+      flex: 1 1 100%;
     }
 
     /* 特殊处理：exchange-rates 有多个子结构 */
     #exchange-rates.section.active > .card {
-      grid-column: 1 / -1;
+      flex: 1 1 100%;
     }
 
     #exchange-rates.section.active > #exchangeAllTab {
-      grid-column: 1 / -1;
+      width: 100%;
+      flex: 1 1 100%;
     }
 
     #exchange-rates.section.active > #exchangeUserTab {
-      display: grid !important;
-      grid-template-columns: 1fr 1.5fr;
+      width: 100%;
+      flex: 1 1 100%;
+      display: flex;
+      flex-wrap: wrap;
       gap: 30px;
-      grid-column: 1 / -1;
-      align-items: start;
+      align-items: flex-start;
     }
 
     #exchangeUserTab > .card {
-      grid-column: 1;
+      flex: 0 0 calc(33.333% - 20px);
+      min-width: 300px;
     }
 
     #exchangeUserTab > .table-container {
-      grid-column: 2;
+      flex: 1 1 calc(66.667% - 20px);
+      min-width: 500px;
     }
 
     /* 处理带标签页的 section - recharge */
-    #recharge.section.active > .section-title {
-      margin-bottom: 20px;
+    #recharge.section.active > div[style*="display: flex"] {
+      width: 100%;
     }
 
     /* 处理带标签页的 section - lending */
     #lending.section.active > div[style*="display: flex"] {
-      grid-column: 1 / -1;
+      width: 100%;
     }
 
     .lending-tab[style*="display: block"] {
-      grid-column: 1 / -1;
-      display: grid !important;
-      grid-template-columns: 1fr 1.5fr;
+      width: 100%;
+      flex: 1 1 100%;
+      display: flex;
+      flex-wrap: wrap;
       gap: 30px;
-      align-items: start;
+      align-items: flex-start;
     }
 
-    .lending-tab[style*="display: block"] > .card,
-    .lending-tab[style*="display: block"] > .table-container {
-      grid-column: unset;
+    .lending-tab[style*="display: block"] > .card {
+      flex: 0 0 calc(33.333% - 20px);
+      min-width: 300px;
     }
 
     .lending-tab[style*="display: block"] > .table-container {
-      grid-column: 2;
+      flex: 1 1 calc(66.667% - 20px);
+      min-width: 500px;
     }
 
     /* Dashboard 特殊样式 */
-    #dashboard.section.active > .section-title {
-      margin-bottom: 30px;
+    #dashboard.section.active {
+      flex-direction: column;
     }
 
     #dashboard.section.active > .stat-grid {
-      grid-column: 1 / -1;
-      margin-bottom: 20px;
+      width: 100%;
     }
 
     #dashboard.section.active > .refresh-btn {
-      grid-column: 1 / -1;
+      align-self: flex-start;
     }
 
     .section-title {
