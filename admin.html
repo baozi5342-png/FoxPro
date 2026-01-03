@@ -59,9 +59,25 @@
     }
 
     .topbar-title {
-      font-size: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .topbar-title-main {
+      font-size: 24px;
       font-weight: 700;
       color: var(--primary);
+      line-height: 1;
+    }
+
+    .topbar-title-sub {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      line-height: 1;
     }
 
     .nav-tabs {
@@ -570,7 +586,10 @@
   <!-- 顶部导航栏 -->
   <div class="topbar">
     <div class="topbar-content">
-      <div class="topbar-title">📊 FoxPro 后台管理</div>
+      <div class="topbar-title">
+        <div class="topbar-title-main">FoxPro</div>
+        <div class="topbar-title-sub">后台管理</div>
+      </div>
       <ul class="nav-tabs">
         <li class="nav-tab active" onclick="switchSection('dashboard', this)">仪表板</li>
         <li class="nav-tab" onclick="switchSection('users', this)">用户管理</li>
