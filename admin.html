@@ -1633,14 +1633,25 @@
       }
     }, 5000);
 
-    // WebSocket 客户端
+    // WebSocket 客户端（带自动重连与退避）
     function initWS() {
-      try {
-        const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new WebSocket(protocol + '://' + location.host + '/ws');
+      let attempts = 0;
+      let ws = null;
 
-        ws.addEventListener('open', () => console.log('WS connected'));
-        ws.addEventListener('close', () => console.log('WS disconnected'));
+      function connect() {
+        const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+        ws = new WebSocket(protocol + '://' + location.host + '/ws');
+
+        ws.addEventListener('open', () => {
+          attempts = 0;
+          console.log('WS connected');
+        });
+
+        ws.addEventListener('close', () => {
+          console.log('WS disconnected');
+          scheduleReconnect();
+        });
+
         ws.addEventListener('message', (evt) => {
           try {
             const msg = JSON.parse(evt.data);
@@ -1696,11 +1707,22 @@
           }
         });
 
+        ws.addEventListener('error', (e) => {
+          console.warn('WS error', e && e.message);
+        });
+
         // expose ws for debug
         window.__foxpro_ws = ws;
-      } catch (err) {
-        console.warn('WebSocket init failed', err.message);
       }
+
+      function scheduleReconnect() {
+        attempts++;
+        const delay = Math.min(30000, 1000 * Math.pow(2, attempts));
+        console.log('Reconnecting WS in', delay, 'ms');
+        setTimeout(() => connect(), delay);
+      }
+
+      connect();
     }
 
     // 更新仪表板统计显示，兼容后端不同字段名

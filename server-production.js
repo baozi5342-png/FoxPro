@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const fsp = fs.promises;
 require('dotenv').config();
 
 const app = express();
@@ -23,6 +24,14 @@ app.use(express.static(path.join(__dirname)));
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
+});
+
+// 全局错误捕获，防止进程因未捕获异常退出
+process.on('uncaughtException', (err) => {
+  console.error('uncaughtException:', err && err.stack ? err.stack : err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('unhandledRejection:', reason);
 });
 
 // ============ WebSocket (实时双向流) ============
@@ -92,11 +101,15 @@ let nextRechargeOrderId = 1;
 let nextLendingId = 1;
 let nextWithdrawalId = 1;
 
-function saveData() {
-  fs.writeFileSync(
-    path.join(DATA_DIR, 'data.json'),
-    JSON.stringify(inMemoryData, null, 2)
-  );
+async function saveData() {
+  try {
+    await fsp.writeFile(
+      path.join(DATA_DIR, 'data.json'),
+      JSON.stringify(inMemoryData, null, 2)
+    );
+  } catch (err) {
+    console.error('saveData failed:', err && err.message ? err.message : err);
+  }
 }
 
 function loadData() {
@@ -293,6 +306,110 @@ app.post('/api/auth/submit-kyc/advanced', (req, res) => {
   } catch (err) {
     console.error('Advanced KYC submit error:', err);
     res.status(500).json({ success: false, message: 'Advanced KYC submission failed' });
+  }
+});
+
+// Helper: extract user id from simple token format 'token-<id>-<ts>' used by this demo
+function getUserIdFromAuthHeader(req) {
+  try {
+    const auth = req.headers['authorization'] || req.headers['Authorization'];
+    if (!auth) return null;
+    const parts = auth.split(' ');
+    if (parts.length !== 2) return null;
+    const token = parts[1];
+    if (!token.startsWith('token-')) return null;
+    const segments = token.split('-');
+    const id = parseInt(segments[1], 10);
+    return Number.isInteger(id) ? id : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Compatibility routes used by frontend: /api/account/verification/:type
+app.post('/api/account/verification/primary', (req, res) => {
+  try {
+    const userId = getUserIdFromAuthHeader(req);
+    if (!userId) return res.status(401).json({ success: false, message: 'Not authenticated' });
+
+    const user = inMemoryData.users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const { fullName, idNumber, address, dateOfBirth } = req.body;
+    const kycRequest = {
+      id: nextKycId++,
+      userId,
+      username: user.username,
+      type: 'primary',
+      name: fullName || '',
+      idNumber: idNumber || '',
+      idType: 'idcard',
+      residence: address || '',
+      extra: { dateOfBirth: dateOfBirth || null },
+      status: 'pending',
+      submittedAt: new Date().toISOString(),
+      approvedAt: null
+    };
+
+    inMemoryData.kyc_requests.push(kycRequest);
+    saveData();
+    broadcast('kyc', inMemoryData.kyc_requests);
+
+    res.json({ success: true, message: 'KYC submitted', kyc: kycRequest });
+  } catch (err) {
+    console.error('Primary KYC submit error (compat):', err);
+    res.status(500).json({ success: false, message: 'Submission failed' });
+  }
+});
+
+app.post('/api/account/verification/advanced', (req, res) => {
+  try {
+    const userId = getUserIdFromAuthHeader(req);
+    if (!userId) return res.status(401).json({ success: false, message: 'Not authenticated' });
+
+    const user = inMemoryData.users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Frontend may send files incorrectly via JSON; accept generic fields
+    const { facePhoto, idCard, info } = req.body || {};
+    const kycRequest = {
+      id: nextKycId++,
+      userId,
+      username: user.username,
+      type: 'advanced',
+      videoUrl: null,
+      faceData: info || null,
+      status: 'pending',
+      submittedAt: new Date().toISOString(),
+      approvedAt: null
+    };
+
+    inMemoryData.kyc_requests.push(kycRequest);
+    saveData();
+    broadcast('kyc', inMemoryData.kyc_requests);
+
+    res.json({ success: true, message: 'Advanced KYC submitted', kyc: kycRequest });
+  } catch (err) {
+    console.error('Advanced KYC submit error (compat):', err);
+    res.status(500).json({ success: false, message: 'Submission failed' });
+  }
+});
+
+// Frontend compatibility: get verification status for current user
+app.get('/api/account/verification-status', (req, res) => {
+  try {
+    const userId = getUserIdFromAuthHeader(req);
+    if (!userId) return res.status(401).json({ success: false, message: 'Not authenticated' });
+
+    const primary = inMemoryData.kyc_requests.filter(k => k.userId === userId && k.type === 'primary')
+      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))[0];
+    const advanced = inMemoryData.kyc_requests.filter(k => k.userId === userId && k.type === 'advanced')
+      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))[0];
+
+    res.json({ success: true, primary: primary ? primary.status : 'pending', advanced: advanced ? advanced.status : 'pending' });
+  } catch (err) {
+    console.error('Verification status error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get status' });
   }
 });
 
@@ -986,6 +1103,9 @@ wss.on('connection', (ws, req) => {
     console.warn('Failed to send initial WS snapshot', e.message);
   }
 
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
+
   ws.on('message', (msg) => {
     // allow clients to send simple actions; expect JSON { action: 'reload' } or others
     try {
@@ -1000,6 +1120,21 @@ wss.on('connection', (ws, req) => {
   });
 
   ws.on('close', () => console.log('WebSocket client disconnected'));
+});
+
+// WS 心跳，清理死连接
+const wsHeartbeatInterval = setInterval(() => {
+  if (!wss) return;
+  wss.clients.forEach(ws => {
+    if (ws.isAlive === false) return ws.terminate();
+    ws.isAlive = false;
+    try { ws.ping(() => {}); } catch (e) { }
+  });
+}, 30000);
+
+// 在进程退出前清理定时器
+process.on('exit', () => {
+  clearInterval(wsHeartbeatInterval);
 });
 
 process.on('SIGTERM', () => {
