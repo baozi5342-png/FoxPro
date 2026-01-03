@@ -171,7 +171,7 @@ app.get('/api/prices', (req, res) => {
 });
 
 // ============ 认证 API ============
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, email, password, phone } = req.body;
 
@@ -196,7 +196,16 @@ app.post('/api/auth/register', (req, res) => {
     };
 
     inMemoryData.users.push(newUser);
-    saveData();
+    // 等待持久化完成再响应并广播，确保前端拉取到最新数据
+    await saveData();
+
+    // 广播给所有连接的管理端，提醒更新用户列表与统计
+    try {
+      broadcast('users', getFormattedUsers());
+      broadcast('stats', getStats());
+    } catch (bErr) {
+      console.warn('Broadcast after register failed:', bErr && bErr.message ? bErr.message : bErr);
+    }
 
     res.json({
       success: true,
@@ -1138,13 +1147,25 @@ process.on('exit', () => {
 });
 
 process.on('SIGTERM', () => {
-  console.log('Shutting down...');
-  server.close(() => process.exit(0));
+  console.log('Received SIGTERM - shutting down gracefully if possible');
+  try {
+    server.close(() => {
+      console.log('HTTP server closed (SIGTERM)');
+    });
+  } catch (e) {
+    console.error('Error closing server on SIGTERM:', e && e.stack ? e.stack : e);
+  }
 });
 
 process.on('SIGINT', () => {
-  console.log('Shutting down...');
-  server.close(() => process.exit(0));
+  console.log('Received SIGINT - shutting down gracefully if possible');
+  try {
+    server.close(() => {
+      console.log('HTTP server closed (SIGINT)');
+    });
+  } catch (e) {
+    console.error('Error closing server on SIGINT:', e && e.stack ? e.stack : e);
+  }
 });
 
 module.exports = app;

@@ -1,0 +1,31 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "testuser",
+      "email": "testuser@example.com",
+      "phone": "13800000002",
+      "password": "dGVzdDEyMw==",
+      "createdAt": "2026-01-04T00:00:00.000Z",
+      "status": "active",
+      "kyc_status": "unverified",
+      "balance": 0
+    }
+  ],
+  "kyc_requests": [],
+  "orders": [],
+  "products": [],
+  "exchanges": [],
+  "recharge_config": {
+    "address": "Default Address",
+    "minAmount": 10,
+    "maxAmount": 100000
+  },
+  "recharge_orders": [],
+  "lending_requests": [],
+  "withdrawal_orders": [],
+  "quickContractPeriods": [
+    { "id": 1, "seconds": 30, "profitRate": 40 },
+    { "id": 2, "seconds": 60, "profitRate": 50 }
+  ]
+}

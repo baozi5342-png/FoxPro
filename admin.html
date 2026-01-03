@@ -1633,23 +1633,41 @@
       }
     }, 5000);
 
-    // WebSocket 客户端（带自动重连与退避）
+    // WebSocket 客户端（带指数退避、抖动和手动关闭控制）
     function initWS() {
-      let attempts = 0;
+      let reconnectAttempts = 0;
       let ws = null;
+      let shouldReconnect = true;
+
+      const BASE_DELAY = 800; // ms
+      const MAX_DELAY = 30000; // ms
+      const MAX_ATTEMPTS = 30; // 上限（足够大，近似无限）
+
+      function getDelay() {
+        const exp = Math.min(MAX_ATTEMPTS, reconnectAttempts);
+        const base = Math.min(MAX_DELAY, BASE_DELAY * Math.pow(2, exp));
+        const jitter = Math.floor(Math.random() * 1000); // up to 1s jitter
+        return Math.min(MAX_DELAY, base + jitter);
+      }
 
       function connect() {
         const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-        ws = new WebSocket(protocol + '://' + location.host + '/ws');
+        try {
+          ws = new WebSocket(protocol + '://' + location.host + '/ws');
+        } catch (e) {
+          console.warn('WS connect error', e && e.message);
+          scheduleReconnect();
+          return;
+        }
 
         ws.addEventListener('open', () => {
-          attempts = 0;
+          reconnectAttempts = 0;
           console.log('WS connected');
         });
 
-        ws.addEventListener('close', () => {
-          console.log('WS disconnected');
-          scheduleReconnect();
+        ws.addEventListener('close', (ev) => {
+          console.log('WS disconnected', ev && ev.code);
+          if (shouldReconnect) scheduleReconnect();
         });
 
         ws.addEventListener('message', (evt) => {
@@ -1657,22 +1675,20 @@
             const msg = JSON.parse(evt.data);
             if (!msg || !msg.type) return;
             switch (msg.type) {
-                  case 'stats':
-                    if (msg.payload) updateStatsUI(msg.payload);
-                    break;
-                  case 'users':
-                    // if users section active, reload
-                    if (document.querySelector('.nav-tab[onclick*="users"]')?.classList.contains('active')) {
-                      loadUsers();
-                    }
-                    break;
-                  case 'kyc':
-                    // reload both primary and advanced when kyc section active
-                    if (document.querySelector('.nav-tab[onclick*="kyc"]')?.classList.contains('active')) {
-                      loadKYCData('primary');
-                      loadKYCData('advanced');
-                    }
-                    break;
+              case 'stats':
+                if (msg.payload) updateStatsUI(msg.payload);
+                break;
+              case 'users':
+                if (document.querySelector('.nav-tab[onclick*="users"]')?.classList.contains('active')) {
+                  loadUsers();
+                }
+                break;
+              case 'kyc':
+                if (document.querySelector('.nav-tab[onclick*="kyc"]')?.classList.contains('active')) {
+                  loadKYCData('primary');
+                  loadKYCData('advanced');
+                }
+                break;
               case 'quick-contract-config':
                 loadQuickContractConfig();
                 break;
@@ -1708,20 +1724,37 @@
         });
 
         ws.addEventListener('error', (e) => {
+          // error event may be followed by close; log only
           console.warn('WS error', e && e.message);
         });
 
-        // expose ws for debug
+        // expose ws and control handles for debug/manual control
         window.__foxpro_ws = ws;
+        window.__foxpro_ws_close = function gracefulClose() {
+          shouldReconnect = false;
+          try {
+            if (ws && ws.readyState === WebSocket.OPEN) ws.close(1000, 'manual-close');
+          } catch (e) {}
+        };
       }
 
       function scheduleReconnect() {
-        attempts++;
-        const delay = Math.min(30000, 1000 * Math.pow(2, attempts));
-        console.log('Reconnecting WS in', delay, 'ms');
-        setTimeout(() => connect(), delay);
+        reconnectAttempts++;
+        const delay = getDelay();
+        console.log('Reconnecting WS in', delay, 'ms (attempt', reconnectAttempts, ')');
+        setTimeout(() => {
+          if (!shouldReconnect) return;
+          try {
+            connect();
+          } catch (e) {
+            console.warn('Reconnect attempt failed', e && e.message);
+            scheduleReconnect();
+          }
+        }, delay);
       }
 
+      // start
+      shouldReconnect = true;
       connect();
     }
 
