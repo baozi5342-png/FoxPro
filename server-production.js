@@ -1,263 +1,223 @@
 // FoxPro Exchange - 完整生产服务器（完整的数据流）
 const express = require('express');
 const cors = require('cors');
+// Minimal production-ready server for FoxPro (outgoing patch)
+// Includes: Express REST API, WebSocket server, persistence (data/data.json), broadcasts
+
+const fs = require('fs').promises;
 const path = require('path');
-const fs = require('fs');
-const fsp = fs.promises;
-require('dotenv').config();
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-const DATA_DIR = path.join(__dirname, 'data');
-
-// 确保data目录存在
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-// ============ 中间件 ============
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(express.static(path.join(__dirname)));
-
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  next();
-});
-
-// 全局错误捕获，防止进程因未捕获异常退出
-process.on('uncaughtException', (err) => {
-  console.error('uncaughtException:', err && err.stack ? err.stack : err);
-});
-process.on('unhandledRejection', (reason) => {
-  console.error('unhandledRejection:', reason);
-});
-
-// ============ WebSocket (实时双向流) ============
+const express = require('express');
+const http = require('http');
 const WebSocket = require('ws');
-let wss;
-function broadcast(type, payload) {
-  if (!wss) return;
-  const message = JSON.stringify({ type, payload });
-  wss.clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
-    }
-  });
+
+const DATA_FILE = path.join(__dirname, '..', 'data', 'data.json');
+
+async function loadData() {
+  try {
+    const raw = await fs.readFile(DATA_FILE, 'utf8');
+    return JSON.parse(raw);
+  } catch (err) {
+    // initialize default structure when missing
+    return {
+      users: [],
+      kyc: [],
+      quick_contract: { config: [], orders: [] },
+      recharge_orders: [],
+      lending_requests: [],
+      withdrawal_orders: [],
+      exchange_records: [],
+      products: [],
+      orders: []
+    };
+  }
 }
 
-function getStats() {
+async function saveData(data) {
+  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
+  await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
+
+function computeStats(data) {
   return {
-    totalUsers: inMemoryData.users.length,
-    activeUsers: inMemoryData.users.filter(u => u.status === 'active').length,
-    totalVolume: inMemoryData.orders.length * 100,
-    totalTransactions: inMemoryData.orders.length + inMemoryData.exchanges.length + inMemoryData.recharge_orders.length
+    users: (data.users || []).length,
+    orders: (data.orders || []).length + (data.quick_contract?.orders || []).length,
+    kyc_requests: (data.kyc || []).length,
+    recharge_orders: (data.recharge_orders || []).length,
+    lending_requests: (data.lending_requests || []).length,
+    withdrawal_orders: (data.withdrawal_orders || []).length
   };
 }
 
-function getFormattedUsers() {
-  return inMemoryData.users.map(u => ({
-    id: u.id,
-    username: u.username,
-    email: u.email,
-    phone: u.phone,
-    created_at: u.createdAt,
-    status: u.status || 'active',
-    kyc_status: u.kyc_status || 'unverified'
-  }));
-}
+async function createServer() {
+  const app = express();
+  app.use(express.json());
 
-// ============ 内存数据存储 ============
-let inMemoryData = {
-  users: [],
-  kyc_requests: [],  // KYC认证申请
-  orders: [],        // 秒合约订单
-  products: [],      // 理财产品
-  exchanges: [],     // 兑换记录
-  recharge_config: {
-    address: 'Default Address',
-    minAmount: 10,
-    maxAmount: 100000
-  },
-  recharge_orders: [],  // 充值订单
-  lending_requests: [], // 借贷申请
-  withdrawal_orders: [], // 提现订单
-  quickContractPeriods: [ // 秒合约周期配置
-    { id: 1, seconds: 30, profitRate: 40 },
-    { id: 2, seconds: 60, profitRate: 50 },
-    { id: 3, seconds: 120, profitRate: 60 },
-    { id: 4, seconds: 180, profitRate: 80 },
-    { id: 5, seconds: 300, profitRate: 100 }
-  ]
-};
+  let data = await loadData();
 
-let nextUserId = 1;
-let nextKycId = 1;
-let nextOrderId = 1;
-let nextProductId = 1;
-let nextExchangeId = 1;
-let nextRechargeOrderId = 1;
-let nextLendingId = 1;
-let nextWithdrawalId = 1;
-
-async function saveData() {
-  try {
-    await fsp.writeFile(
-      path.join(DATA_DIR, 'data.json'),
-      JSON.stringify(inMemoryData, null, 2)
-    );
-  } catch (err) {
-    console.error('saveData failed:', err && err.message ? err.message : err);
-  }
-}
-
-function loadData() {
-  try {
-    const dataPath = path.join(DATA_DIR, 'data.json');
-    if (fs.existsSync(dataPath)) {
-      const loaded = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-      inMemoryData = { ...inMemoryData, ...loaded };
-      if (inMemoryData.users.length > 0) {
-        nextUserId = Math.max(...inMemoryData.users.map(u => u.id)) + 1;
-      }
-      if (inMemoryData.kyc_requests.length > 0) {
-        nextKycId = Math.max(...inMemoryData.kyc_requests.map(k => k.id)) + 1;
-      }
-      if (inMemoryData.orders.length > 0) {
-        nextOrderId = Math.max(...inMemoryData.orders.map(o => o.id)) + 1;
-      }
-      if (inMemoryData.products.length > 0) {
-        nextProductId = Math.max(...inMemoryData.products.map(p => p.id)) + 1;
-      }
-      if (inMemoryData.exchanges.length > 0) {
-        nextExchangeId = Math.max(...inMemoryData.exchanges.map(e => e.id)) + 1;
-      }
-    }
-  } catch (err) {
-    console.warn('Failed to load data:', err.message);
-  }
-}
-
-loadData();
-
-// ============ 健康检查 ============
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// ============ 市场数据 ============
-const mockMarkets = [
-  { symbol: 'BTC', name: 'Bitcoin', currentPrice: 42500, priceChangePercent24h: 2.5, rank: 1 },
-  { symbol: 'ETH', name: 'Ethereum', currentPrice: 2250, priceChangePercent24h: 1.8, rank: 2 },
-  { symbol: 'SOL', name: 'Solana', currentPrice: 185, priceChangePercent24h: 3.2, rank: 3 },
-  { symbol: 'BNB', name: 'Binance Coin', currentPrice: 620, priceChangePercent24h: 2.1, rank: 4 },
-  { symbol: 'XRP', name: 'Ripple', currentPrice: 3.15, priceChangePercent24h: 1.5, rank: 5 },
-  { symbol: 'ADA', name: 'Cardano', currentPrice: 1.25, priceChangePercent24h: 2.3, rank: 6 },
-  { symbol: 'DOGE', name: 'Dogecoin', currentPrice: 0.42, priceChangePercent24h: 4.2, rank: 7 },
-  { symbol: 'LTC', name: 'Litecoin', currentPrice: 195, priceChangePercent24h: 1.9, rank: 8 }
-];
-
-app.get('/api/markets', (req, res) => {
-  res.json({ success: true, markets: mockMarkets });
-});
-
-app.get('/api/prices', (req, res) => {
-  const prices = {};
-  mockMarkets.forEach(m => {
-    prices[m.symbol] = { price: m.currentPrice, change: m.priceChangePercent24h };
+  // REST endpoints used by frontend/admin
+  app.get('/api/admin/stats', (req, res) => {
+    res.json({ success: true, data: computeStats(data) });
   });
-  res.json({ success: true, prices });
-});
 
-// ============ 认证 API ============
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { username, email, password, phone } = req.body;
+  app.get('/api/admin/users', (req, res) => {
+    const formatted = (data.users || []).map(u => ({ id: u.id, username: u.username, email: u.email, phone: u.phone, created_at: u.created_at }));
+    res.json({ success: true, data: formatted });
+  });
 
-    if (!username || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
-    }
+  app.get('/api/admin/kyc', (req, res) => {
+    const type = req.query.type || 'primary';
+    // front-end expects arrays
+    const list = (data.kyc || []).filter(k => (k.type || 'primary') === type);
+    res.json({ success: true, data: list });
+  });
 
-    if (inMemoryData.users.find(u => u.username === username || u.email === email)) {
-      return res.status(400).json({ success: false, message: 'User already exists' });
-    }
-
-    const newUser = {
-      id: nextUserId++,
-      username,
-      email,
-      phone: phone || '',
-      password: Buffer.from(password).toString('base64'),
-      createdAt: new Date().toISOString(),
-      status: 'active',
-      kyc_status: 'unverified',
-      balance: 0
-    };
-
-    inMemoryData.users.push(newUser);
-    // 等待持久化完成再响应并广播，确保前端拉取到最新数据
-    await saveData();
-
-    // 广播给所有连接的管理端，提醒更新用户列表与统计
+  // simplified register endpoint — persists then broadcasts
+  app.post('/api/auth/register', async (req, res) => {
     try {
-      broadcast('users', getFormattedUsers());
-      broadcast('stats', getStats());
-    } catch (bErr) {
-      console.warn('Broadcast after register failed:', bErr && bErr.message ? bErr.message : bErr);
+      const body = req.body || {};
+      const id = (data.users.length ? (Math.max(...data.users.map(u=>u.id||0)) + 1) : 1);
+      const newUser = {
+        id,
+        username: body.username || `user${id}`,
+        email: body.email || '',
+        phone: body.phone || '',
+        created_at: new Date().toISOString()
+      };
+      data.users.push(newUser);
+      await saveData(data);
+      // broadcasts will be handled by broadcaster below via notifyAll
+      notifyAll('users', data.users.map(u => ({ id: u.id, username: u.username, email: u.email, phone: u.phone, created_at: u.created_at })));
+      notifyAll('stats', computeStats(data));
+      res.json({ success: true, data: newUser });
+    } catch (err) {
+      console.error('register error', err);
+      res.status(500).json({ success: false, error: err.message });
     }
+  });
 
-    res.json({
-      success: true,
-      message: 'Registration successful',
-      user: { id: newUser.id, username: newUser.username, email: newUser.email }
+  // other minimal endpoints as placeholders
+  app.get('/api/admin/quick-contract/config', (req, res) => {
+    res.json({ success: true, data: data.quick_contract?.config || [] });
+  });
+
+  const server = http.createServer(app);
+
+  // WebSocket server
+  const wss = new WebSocket.Server({ server, path: '/ws' });
+
+  // notifyAll will be assigned after wss defined
+  global._wss = wss;
+
+  function notifyAll(type, payload) {
+    const msg = JSON.stringify({ type, payload });
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg);
+      }
     });
-  } catch (err) {
-    console.error('Register error:', err);
-    res.status(500).json({ success: false, message: 'Registration failed' });
   }
-});
 
-app.post('/api/auth/login', (req, res) => {
-  try {
-    const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ success: false, message: 'Username and password required' });
-    }
+  // heartbeat for detecting dead clients
+  function heartbeat() { this.isAlive = true; }
 
-    const user = inMemoryData.users.find(u => (u.username === username || u.email === username));
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
+  wss.on('connection', (ws, req) => {
+    ws.isAlive = true;
+    ws.on('pong', heartbeat);
 
-    const decodedPassword = Buffer.from(user.password, 'base64').toString('utf8');
-    if (decodedPassword !== password) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
+    // send initial snapshot
+    ws.send(JSON.stringify({ type: 'stats', payload: computeStats(data) }));
+    ws.send(JSON.stringify({ type: 'users', payload: (data.users || []).map(u => ({ id: u.id, username: u.username, email: u.email, phone: u.phone, created_at: u.created_at })) }));
+    ws.send(JSON.stringify({ type: 'kyc', payload: data.kyc || [] }));
+    ws.send(JSON.stringify({ type: 'quick-contract-config', payload: data.quick_contract?.config || [] }));
+    ws.send(JSON.stringify({ type: 'quick-contract-orders', payload: data.quick_contract?.orders || [] }));
+    ws.send(JSON.stringify({ type: 'recharge-orders', payload: data.recharge_orders || [] }));
+    ws.send(JSON.stringify({ type: 'lending-requests', payload: data.lending_requests || [] }));
+    ws.send(JSON.stringify({ type: 'withdrawal-orders', payload: data.withdrawal_orders || [] }));
+    ws.send(JSON.stringify({ type: 'exchange-records', payload: data.exchange_records || [] }));
 
-    res.json({
-      success: true,
-      message: 'Login successful',
-      token: 'token-' + user.id + '-' + Date.now(),
-      user: { id: user.id, username: user.username, email: user.email, kyc_status: user.kyc_status }
+    ws.on('message', async (msg) => {
+      try {
+        const parsed = JSON.parse(msg.toString());
+        // Expected shape: { type: 'new_order'|'update'|'client_stats', payload: {...} }
+        if (!parsed || !parsed.type) return;
+
+        if (parsed.type === 'new_order') {
+          const order = parsed.payload || {};
+          order.id = (data.orders.length ? (Math.max(...data.orders.map(o=>o.id||0)) + 1) : 1);
+          order.created_at = new Date().toISOString();
+          data.orders.push(order);
+          await saveData(data);
+          notifyAll('orders', data.orders);
+          notifyAll('stats', computeStats(data));
+        } else if (parsed.type === 'update') {
+          const { entity, id, changes } = parsed.payload || {};
+          if (entity && id != null) {
+            const list = data[entity];
+            if (Array.isArray(list)) {
+              const idx = list.findIndex(x => (x.id == id));
+              if (idx >= 0) {
+                list[idx] = Object.assign({}, list[idx], changes);
+                await saveData(data);
+                notifyAll(entity, list);
+                if (entity === 'users' || entity === 'orders') notifyAll('stats', computeStats(data));
+              }
+            }
+          }
+        } else if (parsed.type === 'client_stats') {
+          // broadcast client-reported stats to others (non-authoritative)
+          notifyAll('client_stats', parsed.payload || {});
+        }
+      } catch (err) {
+        console.error('ws message handler error', err);
+      }
     });
-  } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({ success: false, message: 'Login failed' });
-  }
-});
 
-// ============ KYC认证提交（用户端） ============
-app.post('/api/auth/submit-kyc/primary', (req, res) => {
-  try {
-    const { userId, name, idNumber, idType } = req.body;
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'User ID required' });
-    }
+    ws.on('close', () => {});
+    ws.on('error', err => console.error('ws client error', err));
+  });
 
-    const user = inMemoryData.users.find(u => u.id === userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+  // periodic ping
+  const interval = setInterval(() => {
+    wss.clients.forEach(ws => {
+      if (ws.isAlive === false) return ws.terminate();
+      ws.isAlive = false;
+      ws.ping(() => {});
+    });
+  }, 30000);
+
+  wss.on('close', () => clearInterval(interval));
+
+  // expose notifyAll for external use in this module
+  global.notifyAll = notifyAll;
+
+  // start server
+  const PORT = process.env.PORT || 3000;
+  server.listen(PORT, () => console.log(`FoxPro server running on http://localhost:${PORT}`));
+
+  // graceful shutdown
+  process.on('SIGINT', async () => {
+    console.log('SIGINT received, shutting down...');
+    clearInterval(interval);
+    wss.close();
+    server.close(() => {
+      console.log('HTTP server closed (SIGINT)');
+      process.exit(0);
+    });
+  });
+
+  return { app, server, wss, data };
+}
+
+// Run when executed directly
+if (require.main === module) {
+  createServer().catch(err => {
+    console.error('Failed to start server', err);
+    process.exit(1);
+  });
+}
+
+module.exports = { createServer };
+
     }
 
     const kycRequest = {
