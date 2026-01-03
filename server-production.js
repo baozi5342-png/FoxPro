@@ -296,6 +296,117 @@ app.post('/api/auth/submit-kyc/advanced', (req, res) => {
   }
 });
 
+// 兼容前端 /api/account 路由：接收用户端的 KYC 提交（Primary）
+app.post('/api/account/verification/primary', (req, res) => {
+  try {
+    const auth = req.headers.authorization || '';
+    const token = auth.split(' ')[1];
+    let userId = null;
+    if (token && token.startsWith('token-')) {
+      const parts = token.split('-');
+      userId = parseInt(parts[1], 10);
+    }
+
+    if (!userId) return res.status(401).json({ success: false, message: 'Not authorized' });
+
+    const { fullName, idNumber, address, dateOfBirth } = req.body;
+    if (!fullName || !idNumber || !address) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    const user = inMemoryData.users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const kycRequest = {
+      id: nextKycId++,
+      userId,
+      username: user.username,
+      type: 'primary',
+      name: fullName,
+      idNumber,
+      idType: 'id',
+      residence: address,
+      status: 'pending',
+      submittedAt: new Date().toISOString(),
+      approvedAt: null
+    };
+
+    inMemoryData.kyc_requests.push(kycRequest);
+    saveData();
+    broadcast('kyc', inMemoryData.kyc_requests);
+
+    res.json({ success: true, message: 'Submitted for review' });
+  } catch (err) {
+    console.error('Account primary verification error:', err);
+    res.status(500).json({ success: false, message: 'Submission failed' });
+  }
+});
+
+// 兼容前端 /api/account 路由：接收用户端的 KYC 提交（Advanced）
+app.post('/api/account/verification/advanced', (req, res) => {
+  try {
+    const auth = req.headers.authorization || '';
+    const token = auth.split(' ')[1];
+    let userId = null;
+    if (token && token.startsWith('token-')) {
+      const parts = token.split('-');
+      userId = parseInt(parts[1], 10);
+    }
+
+    if (!userId) return res.status(401).json({ success: false, message: 'Not authorized' });
+
+    const { info } = req.body;
+    const user = inMemoryData.users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const kycRequest = {
+      id: nextKycId++,
+      userId,
+      username: user.username,
+      type: 'advanced',
+      info: info || '',
+      status: 'pending',
+      submittedAt: new Date().toISOString(),
+      approvedAt: null
+    };
+
+    inMemoryData.kyc_requests.push(kycRequest);
+    saveData();
+    broadcast('kyc', inMemoryData.kyc_requests);
+
+    res.json({ success: true, message: 'Submitted for review' });
+  } catch (err) {
+    console.error('Account advanced verification error:', err);
+    res.status(500).json({ success: false, message: 'Submission failed' });
+  }
+});
+
+// 兼容前端 /api/account 验证状态查询
+app.get('/api/account/verification-status', (req, res) => {
+  try {
+    const auth = req.headers.authorization || '';
+    const token = auth.split(' ')[1];
+    let userId = null;
+    if (token && token.startsWith('token-')) {
+      const parts = token.split('-');
+      userId = parseInt(parts[1], 10);
+    }
+    if (!userId) return res.status(401).json({ message: 'Not authorized' });
+
+    const userKyc = inMemoryData.kyc_requests.filter(k => k.userId === userId);
+    const primary = userKyc.find(k => k.type === 'primary');
+    const advanced = userKyc.find(k => k.type === 'advanced');
+
+    res.json({
+      primary: primary ? primary.status : 'unsubmitted',
+      advanced: advanced ? advanced.status : 'unsubmitted'
+    });
+  } catch (err) {
+    console.error('Verification status error:', err);
+    res.status(500).json({ message: 'Error' });
+  }
+});
+
 // ============ 后台管理 API ============
 
 // 统计信息
