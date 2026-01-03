@@ -1622,6 +1622,7 @@
     window.addEventListener('load', () => {
       loadDashboardStats();
       loadQuickContractConfig();
+      initWS();
     });
 
     // 定时刷新数据
@@ -1631,6 +1632,105 @@
         loadSectionData(activeSection.id);
       }
     }, 5000);
+
+    // WebSocket 客户端
+    function initWS() {
+      try {
+        const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws = new WebSocket(protocol + '://' + location.host + '/ws');
+
+        ws.addEventListener('open', () => console.log('WS connected'));
+        ws.addEventListener('close', () => console.log('WS disconnected'));
+        ws.addEventListener('message', (evt) => {
+          try {
+            const msg = JSON.parse(evt.data);
+            if (!msg || !msg.type) return;
+            switch (msg.type) {
+                  case 'stats':
+                    if (msg.payload) updateStatsUI(msg.payload);
+                    break;
+                  case 'users':
+                    // if users section active, reload
+                    if (document.querySelector('.nav-tab[onclick*="users"]')?.classList.contains('active')) {
+                      loadUsers();
+                    }
+                    break;
+                  case 'kyc':
+                    // reload both primary and advanced when kyc section active
+                    if (document.querySelector('.nav-tab[onclick*="kyc"]')?.classList.contains('active')) {
+                      loadKYCData('primary');
+                      loadKYCData('advanced');
+                    }
+                    break;
+              case 'quick-contract-config':
+                loadQuickContractConfig();
+                break;
+              case 'orders':
+                if (document.querySelector('.nav-tab[onclick*="quick-contract"]')?.classList.contains('active')) {
+                  loadQuickContractOrders();
+                }
+                break;
+              case 'recharge-orders':
+                if (document.querySelector('.nav-tab[onclick*="recharge"]')?.classList.contains('active')) {
+                  loadRechargeOrders();
+                }
+                break;
+              case 'lending-requests':
+                if (document.querySelector('.nav-tab[onclick*="lending"]')?.classList.contains('active')) {
+                  loadLendingRequests();
+                }
+                break;
+              case 'withdrawal-orders':
+                if (document.querySelector('.nav-tab[onclick*="withdrawal"]')?.classList.contains('active')) {
+                  loadWithdrawalOrders();
+                }
+                break;
+              case 'exchange-records':
+                if (document.querySelector('.nav-tab[onclick*="exchange"]')?.classList.contains('active')) {
+                  loadExchangeRecords();
+                }
+                break;
+            }
+          } catch (e) {
+            console.warn('WS message parse error', e.message);
+          }
+        });
+
+        // expose ws for debug
+        window.__foxpro_ws = ws;
+      } catch (err) {
+        console.warn('WebSocket init failed', err.message);
+      }
+    }
+
+    // 更新仪表板统计显示，兼容后端不同字段名
+    function updateStatsUI(payload) {
+      try {
+        // 支持多种键名：totalUsers OR users OR data.totalUsers
+        const totalUsers = payload.totalUsers || payload.users || (payload.data && payload.data.totalUsers) || 0;
+        const totalOrders = payload.totalTransactions || payload.orders || (payload.data && payload.data.orders) || 0;
+        const kycCount = payload.kyc_requests || payload.kycRequests || (payload.data && payload.data.kyc_requests) || (window.__kycCount || 0);
+        const rechargeCount = payload.recharge_orders || payload.rechargeOrders || (payload.data && payload.data.recharge_orders) || 0;
+        const lendingCount = payload.lending_requests || payload.lendingRequests || (payload.data && payload.data.lending_requests) || 0;
+        const withdrawalCount = payload.withdrawal_orders || payload.withdrawalOrders || (payload.data && payload.data.withdrawal_orders) || 0;
+
+        const elUsers = document.getElementById('stat-users');
+        const elOrders = document.getElementById('stat-orders');
+        const elKyc = document.getElementById('stat-kyc');
+        const elRecharge = document.getElementById('stat-recharge');
+        const elLending = document.getElementById('stat-lending');
+        const elWithdrawal = document.getElementById('stat-withdrawal');
+
+        if (elUsers) elUsers.textContent = totalUsers;
+        if (elOrders) elOrders.textContent = totalOrders;
+        if (elKyc) elKyc.textContent = kycCount;
+        if (elRecharge) elRecharge.textContent = rechargeCount;
+        if (elLending) elLending.textContent = lendingCount;
+        if (elWithdrawal) elWithdrawal.textContent = withdrawalCount;
+      } catch (e) {
+        console.warn('updateStatsUI error', e.message);
+      }
+    }
   </script>
 </body>
 </html>
