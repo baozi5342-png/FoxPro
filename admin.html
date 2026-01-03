@@ -60,8 +60,9 @@
 
     .topbar-title {
       display: flex;
-      flex-direction: column;
-      gap: 4px;
+      flex-direction: row;
+      align-items: center;
+      gap: 16px;
     }
 
     .topbar-title-main {
@@ -69,6 +70,7 @@
       font-weight: 700;
       color: var(--primary);
       line-height: 1;
+      margin: 0;
     }
 
     .topbar-title-sub {
@@ -78,6 +80,9 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
       line-height: 1;
+      margin: 0;
+      border-left: 1px solid var(--border);
+      padding-left: 16px;
     }
 
     .nav-tabs {
