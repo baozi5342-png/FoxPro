@@ -136,20 +136,15 @@
       overflow-y: auto;
     }
 
-    /* 全局网格布局 */
-    .content {
-      display: grid;
-      grid-template-columns: 1fr 1.5fr;
-      gap: 30px;
-      align-items: start;
-    }
-
     .section {
       display: none;
     }
 
     .section.active {
-      display: contents;
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 30px;
+      align-items: start;
     }
 
     /* Section 中的元素继承网格布局 */
@@ -200,40 +195,44 @@
     }
 
     /* 处理带标签页的 section - recharge */
-    #recharge.section.active {
-      display: block;
-    }
-
     #recharge.section.active > .section-title {
       margin-bottom: 20px;
     }
 
-    #recharge.section.active > div[style*="display: flex"] {
-      margin-bottom: 20px;
+    /* 处理带标签页的 section - lending */
+    #lending.section.active > div[style*="display: flex"] {
+      grid-column: 1 / -1;
     }
 
-    #rechargeConfigTab {
-      display: grid;
+    .lending-tab[style*="display: block"] {
+      grid-column: 1 / -1;
+      display: grid !important;
       grid-template-columns: 1fr 1.5fr;
       gap: 30px;
       align-items: start;
     }
 
-    #rechargeOrdersTab {
-      display: grid;
-      grid-template-columns: 1fr 1.5fr;
-      gap: 30px;
-      align-items: start;
+    .lending-tab[style*="display: block"] > .card,
+    .lending-tab[style*="display: block"] > .table-container {
+      grid-column: unset;
+    }
+
+    .lending-tab[style*="display: block"] > .table-container {
+      grid-column: 2;
     }
 
     /* Dashboard 特殊样式 */
-    #dashboard.section.active {
-      display: block;
+    #dashboard.section.active > .section-title {
+      margin-bottom: 30px;
     }
 
-    #dashboard.section.active > .section-title {
-      grid-column: unset;
-      margin-bottom: 30px;
+    #dashboard.section.active > .stat-grid {
+      grid-column: 1 / -1;
+      margin-bottom: 20px;
+    }
+
+    #dashboard.section.active > .refresh-btn {
+      grid-column: 1 / -1;
     }
 
     .section-title {
