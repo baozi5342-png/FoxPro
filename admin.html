@@ -691,6 +691,46 @@
       </div>
     </div>
 
+    <!-- 市场配置（可在仪表板快速管理市场交易模式） -->
+    <div class="card">
+      <div class="card-title">市场配置</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>符号（symbol）</label>
+          <input type="text" id="mc-symbol" placeholder="例如: BTC-USDT" />
+        </div>
+        <div class="form-group">
+          <label>状态</label>
+          <select id="mc-status">
+            <option value="enabled">enabled</option>
+            <option value="disabled">disabled</option>
+            <option value="buy-only">buy-only</option>
+            <option value="sell-only">sell-only</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>最小下单量</label>
+          <input type="number" id="mc-minQty" step="any" placeholder="0.0001" />
+        </div>
+        <div class="form-group">
+          <label>价格精度</label>
+          <input type="number" id="mc-pricePrecision" placeholder="2" />
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="saveMarketConfig()">保存市场配置</button>
+        <button class="btn btn-secondary" onclick="loadMarketConfig()">刷新</button>
+      </div>
+      <div style="margin-top:16px" class="table-container">
+        <table>
+          <thead>
+            <tr><th>符号</th><th>状态</th><th>最小量</th><th>价格精度</th><th>更新时间</th></tr>
+          </thead>
+          <tbody id="marketConfigTable"><tr><td colspan="5" style="text-align:center;color:var(--muted)">无数据</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- 订单与成交（交易） -->
     <div id="exchange" class="section">
       <div class="section-header">
@@ -995,9 +1035,12 @@
                 if (msg.payload) updateStatsUI(msg.payload);
                 break;
               case 'users':
-                if (document.querySelector('.nav-tab[onclick*="users"]')?.classList.contains('active')) {
-                  loadUsers();
-                }
+                // always refresh users list when server broadcasts users
+                loadUsers();
+                break;
+              case 'market_config':
+                // render market configuration when received
+                renderMarketConfig(msg.payload || []);
                 break;
               case 'kyc':
                 if (document.querySelector('.nav-tab[onclick*="kyc"]')?.classList.contains('active')) {
@@ -1191,6 +1234,69 @@
           });
         });
       } catch (e) { console.warn('renderOrdersList error', e && e.message); }
+    }
+
+    // market config state (keeps latest snapshot from server)
+    let __marketConfig = [];
+
+    function renderMarketConfig(list) {
+      try {
+        __marketConfig = Array.isArray(list) ? list : [];
+        const tbody = document.getElementById('marketConfigTable');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (!__marketConfig.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">无数据</td></tr>';
+          return;
+        }
+        __marketConfig.forEach(m => {
+          tbody.innerHTML += `<tr>
+            <td>${m.symbol || '-'}</td>
+            <td>${m.status || '-'}</td>
+            <td>${m.minQty != null ? m.minQty : '-'}</td>
+            <td>${m.pricePrecision != null ? m.pricePrecision : '-'}</td>
+            <td>${m.updated_at || m.created_at || '-'}</td>
+          </tr>`;
+        });
+        // fill form with first market for quick edit
+        const first = __marketConfig[0];
+        if (first) {
+          document.getElementById('mc-symbol').value = first.symbol || '';
+          document.getElementById('mc-status').value = first.status || 'enabled';
+          document.getElementById('mc-minQty').value = first.minQty != null ? first.minQty : '';
+          document.getElementById('mc-pricePrecision').value = first.pricePrecision != null ? first.pricePrecision : '';
+        }
+      } catch (e) { console.warn('renderMarketConfig error', e && e.message); }
+    }
+
+    function loadMarketConfig() {
+      try {
+        // prefer the cached snapshot from WS
+        renderMarketConfig(__marketConfig || []);
+      } catch (e) { console.warn('loadMarketConfig error', e && e.message); }
+    }
+
+    async function saveMarketConfig() {
+      try {
+        const symbol = (document.getElementById('mc-symbol').value || '').trim();
+        if (!symbol) return alert('请填写符号');
+        const payload = {
+          symbol,
+          status: document.getElementById('mc-status').value,
+          minQty: parseFloat(document.getElementById('mc-minQty').value) || 0,
+          pricePrecision: parseInt(document.getElementById('mc-pricePrecision').value) || 0
+        };
+        // use admin token via query param for now
+        const adminToken = (new URLSearchParams(location.search)).get('admin_token') || 'dev-admin-token';
+        const res = await fetch(`${API_BASE}/admin/market/set?admin_token=${encodeURIComponent(adminToken)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const j = await res.json();
+        if (!j || !j.success) return alert('保存失败: ' + (j && j.error));
+        alert('保存成功');
+        // update UI with returned markets
+        renderMarketConfig(j.data || []);
+      } catch (e) { console.warn('saveMarketConfig error', e && e.message); alert('保存失败'); }
     }
   </script>
 </body>

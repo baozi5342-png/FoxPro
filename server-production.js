@@ -21,6 +21,7 @@ async function loadData() {
       withdrawal_orders: [],
       exchange_records: [],
       products: [],
+      markets: [],
       orders: [],
       trades: []
     };
@@ -196,6 +197,9 @@ async function createServer() {
       const newUser = { id, username: body.username || `user${id}`, email: body.email || '', phone: body.phone || '', created_at: new Date().toISOString() };
       data.users.push(newUser);
       await saveData(data);
+      // broadcast new user list and updated stats immediately
+      notifyAll('users', (data.users || []).map(u => ({ id: u.id, username: u.username, email: u.email, phone: u.phone, created_at: u.created_at })));
+      notifyAll('stats', computeStats(data));
         // perform cancel atomically (refund + mark)
         await performAtomicUpdate(async () => {
           const order = data.orders.find(o => o.id == orderId);
@@ -397,6 +401,29 @@ async function createServer() {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
   });
 
+  // admin: set market configuration (create/update a market entry)
+  app.post('/api/admin/market/set', async (req, res) => {
+    try {
+      const cfg = req.body || {};
+      if (!cfg.symbol) return res.status(400).json({ success: false, error: 'symbol required' });
+      await performAtomicUpdate(async () => {
+        data.markets = data.markets || [];
+        const idx = data.markets.findIndex(m => m.symbol === cfg.symbol);
+        const now = new Date().toISOString();
+        if (idx >= 0) {
+          data.markets[idx] = Object.assign({}, data.markets[idx], cfg, { updated_at: now });
+        } else {
+          data.markets.push(Object.assign({ created_at: now, updated_at: now }, cfg));
+        }
+        try { if (sqlite) { /* persist markets if sqlite schema exists (not implemented) */ } } catch (e) {}
+      });
+      // persist and broadcast
+      await saveData(data);
+      notifyAll('market_config', data.markets || []);
+      res.json({ success: true, data: data.markets || [] });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  });
+
   wss.on('connection', (ws) => {
     ws.isAlive = true;
     ws.on('pong', heartbeat);
@@ -412,6 +439,8 @@ async function createServer() {
       ws.send(JSON.stringify({ type: 'lending-requests', payload: data.lending_requests || [] }));
       ws.send(JSON.stringify({ type: 'withdrawal-orders', payload: data.withdrawal_orders || [] }));
       ws.send(JSON.stringify({ type: 'exchange-records', payload: data.exchange_records || [] }));
+        // send market configuration snapshot to newly connected admin clients
+        ws.send(JSON.stringify({ type: 'market_config', payload: data.markets || [] }));
     } catch (err) { console.error('ws initial send error', err); }
 
     ws.on('message', async (msg) => {
