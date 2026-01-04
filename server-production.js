@@ -16,8 +16,29 @@ async function loadData() {
       users: [],
       kyc: [],
       quick_contract: { config: [], orders: [] },
-      recharge_orders: [],
-      lending_requests: [],
+      // perform atomic place: reserve funds/assets first then place & persist
+      const result = await performAtomicUpdate(async () => {
+        // reservation
+        const user = (data.users || []).find(u => u.id == order.userId);
+        if (!user) throw new Error('user not found');
+        user.reservedBalance = user.reservedBalance || 0;
+        user.reservedAssets = user.reservedAssets || {};
+        if (order.side === 'buy') {
+          if (order.type === 'limit') {
+            const need = (order.price || 0) * (order.amount || 0);
+            if ((user.balance || 0) < need) throw new Error('insufficient balance for reserve');
+            user.balance -= need; user.reservedBalance += need;
+          }
+          // market buy: do not reserve, will deduct on fill
+        } else if (order.side === 'sell') {
+          user.assets = user.assets || {};
+          const have = (user.assets[order.symbol] || 0);
+          if (have < (order.amount || 0)) throw new Error('insufficient asset balance for reserve');
+          user.assets[order.symbol] = have - (order.amount || 0);
+          user.reservedAssets[order.symbol] = (user.reservedAssets[order.symbol] || 0) + (order.amount || 0);
+        }
+
+        const r = engine.placeOrder(order);
       withdrawal_orders: [],
       exchange_records: [],
       products: [],
@@ -46,8 +67,18 @@ async function createServer() {
   const app = express();
   app.use(express.json());
 
-  function log(...args) {
-    console.log(new Date().toISOString(), ...args);
+  const CONFIG = {
+    adminToken: process.env.ADMIN_TOKEN || 'dev-admin-token',
+    fee: { maker: parseFloat(process.env.MAKER_FEE || '0.001'), taker: parseFloat(process.env.TAKER_FEE || '0.002') },
+    snapshotIntervalMs: 5000
+  };
+
+  function log(...args) { console.log(new Date().toISOString(), ...args); }
+
+  function adminAuth(req, res, next) {
+    const token = req.headers['x-admin-token'] || req.query.admin_token;
+    if (!token || token !== CONFIG.adminToken) return res.status(401).json({ success: false, error: 'admin auth required' });
+    next();
   }
 
   // perform atomic in-memory mutation + persist; on error rollback
@@ -64,6 +95,70 @@ async function createServer() {
       throw err;
     }
   }
+
+    // apply a single fill to taker/maker including reserved handling and fees
+    function applyFill(f) {
+      try {
+        const quote = (f.price || 0) * (f.amount || 0);
+        const takerO = (data.orders || []).find(o => o.id == f.takerOrderId) || null;
+        const makerO = (data.orders || []).find(o => o.id == f.makerOrderId) || null;
+        const taker = (data.users || []).find(u => u.id == (takerO && takerO.userId)) || null;
+        const maker = (data.users || []).find(u => u.id == (makerO && makerO.userId)) || null;
+
+        const makerFee = quote * (CONFIG.fee.maker || 0);
+        const takerFee = quote * (CONFIG.fee.taker || 0);
+
+        if (taker) {
+          taker.reservedBalance = taker.reservedBalance || 0;
+          taker.reservedAssets = taker.reservedAssets || {};
+          taker.assets = taker.assets || {};
+          if (f.takerSide === 'buy') {
+            // consume reservedBalance if available
+            if ((taker.reservedBalance || 0) >= quote) {
+              taker.reservedBalance -= quote;
+            } else {
+              taker.balance = (taker.balance || 0) - quote;
+            }
+            taker.assets[f.symbol] = (taker.assets[f.symbol] || 0) + f.amount;
+            taker.balance = (taker.balance || 0) - takerFee;
+          } else {
+            // sell
+            if ((taker.reservedAssets || {})[f.symbol] >= f.amount) {
+              taker.reservedAssets[f.symbol] -= f.amount;
+            } else {
+              taker.assets[f.symbol] = (taker.assets[f.symbol] || 0) - f.amount;
+            }
+            taker.balance = (taker.balance || 0) + quote - takerFee;
+          }
+        }
+
+        if (maker) {
+          maker.reservedBalance = maker.reservedBalance || 0;
+          maker.reservedAssets = maker.reservedAssets || {};
+          maker.assets = maker.assets || {};
+          if (f.takerSide === 'buy') {
+            // maker sold
+            if ((maker.reservedAssets || {})[f.symbol] >= f.amount) {
+              maker.reservedAssets[f.symbol] -= f.amount;
+            } else {
+              maker.assets[f.symbol] = (maker.assets[f.symbol] || 0) - f.amount;
+            }
+            maker.balance = (maker.balance || 0) + quote - makerFee;
+          } else {
+            // maker bought
+            if ((maker.reservedBalance || 0) >= quote) {
+              maker.reservedBalance -= quote;
+            } else {
+              maker.balance = (maker.balance || 0) - quote;
+            }
+            maker.assets[f.symbol] = (maker.assets[f.symbol] || 0) + f.amount;
+            maker.balance = (maker.balance || 0) - makerFee;
+          }
+        }
+      } catch (e) {
+        console.warn('applyFill error', e && e.message);
+      }
+    }
 
   let data = await loadData();
   // ensure trades array exists
@@ -111,6 +206,9 @@ async function createServer() {
     res.json({ success: true, data: list });
   });
 
+  // protect admin endpoints
+  app.use('/api/admin', adminAuth);
+
   app.post('/api/auth/register', async (req, res) => {
     try {
       const body = req.body || {};
@@ -118,30 +216,29 @@ async function createServer() {
       const newUser = { id, username: body.username || `user${id}`, email: body.email || '', phone: body.phone || '', created_at: new Date().toISOString() };
       data.users.push(newUser);
       await saveData(data);
-      // persist to sqlite if available
-      try { if (sqlite) sqlite.insertOrUpdateUser(newUser); } catch (e) {}
-      notifyAll('users', data.users.map(u => ({ id: u.id, username: u.username, email: u.email, phone: u.phone, created_at: u.created_at })));
-      notifyAll('stats', computeStats(data));
-      res.json({ success: true, data: newUser });
-    } catch (err) {
-      console.error('register error', err);
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
-  app.get('/api/admin/quick-contract/config', (req, res) => res.json({ success: true, data: data.quick_contract?.config || [] }));
-
-  // REST endpoint to place orders
-  app.post('/api/order/place', async (req, res) => {
-    try {
-      const order = req.body || {};
-      order.id = (data.orders.length ? (Math.max(...data.orders.map(o => o.id || 0)) + 1) : null);
-      order.created_at = new Date().toISOString();
-
-      // basic validation and balance checks
-      const user = (data.users || []).find(u => u.id == order.userId);
-      if (!user) return res.status(400).json({ success: false, error: 'user not found' });
-
+        // perform cancel atomically (refund + mark)
+        await performAtomicUpdate(async () => {
+          const order = data.orders.find(o => o.id == orderId);
+          if (order) {
+            const user = (data.users || []).find(u => u.id == order.userId);
+            const remaining = (order.remaining != null) ? order.remaining : order.amount;
+            if (user) {
+              if (order.side === 'buy') {
+                const refund = (order.price || 0) * (remaining || 0);
+                user.balance = (user.balance || 0) + refund;
+              } else if (order.side === 'sell') {
+                user.assets = user.assets || {};
+                user.assets[order.symbol] = (user.assets[order.symbol] || 0) + (remaining || 0);
+              }
+            }
+            order.status = 'cancelled';
+            order.remaining = 0;
+            try { if (sqlite) sqlite.insertOrder(order); } catch (e) {}
+          }
+        });
+        notifyAll('orders', data.orders);
+        log('order.cancel', orderId);
+        res.json({ success: true });
       // simple asset bookkeeping: ensure user has funds for buy or assets for sell
       if (order.side === 'buy') {
         const needed = (order.type === 'market' && order.price) ? (order.price * order.amount) : (order.price * order.amount);
@@ -151,80 +248,39 @@ async function createServer() {
         if (have < order.amount) return res.status(400).json({ success: false, error: 'insufficient asset balance' });
       }
 
-      // delegate to engine which may assign id and placedOrder
-      const result = engine.placeOrder(order);
+      // perform atomically: run engine.placeOrder and persist (with rollback on error)
+      const result = await performAtomicUpdate(async () => {
+        const r = engine.placeOrder(order);
+        if (r.placedOrder) {
+          r.placedOrder.remaining = r.placedOrder.remaining || r.placedOrder.amount;
+          r.placedOrder.status = 'open';
+          data.orders.push(r.placedOrder);
+          try { if (sqlite) sqlite.insertOrder(r.placedOrder); } catch (e) {}
+        }
+        if (r.fills && r.fills.length) {
+          r.fills.forEach(f => {
+            // apply funds/assets and fees
+            applyFill(f);
+            // update order remaining/status
+            const takerO = data.orders.find(o => o.id == f.takerOrderId) || (f.takerOrderId == order.id ? order : null);
+            const makerO = data.orders.find(o => o.id == f.makerOrderId) || null;
+            if (takerO) takerO.remaining = (takerO.remaining || takerO.amount) - f.amount, takerO.status = ((takerO.remaining || 0) <= 0) ? 'filled' : 'partial';
+            if (makerO) makerO.remaining = (makerO.remaining || makerO.amount) - f.amount, makerO.status = ((makerO.remaining || 0) <= 0) ? 'filled' : 'partial';
+            try { if (sqlite) sqlite.insertTrade(f); } catch (e) {}
+            data.trades = data.trades || [];
+            data.trades.push(f);
+          });
+        }
+        // persist users to sqlite (best-effort)
+        try { if (sqlite) { (data.users || []).forEach(u => sqlite.insertOrUpdateUser(u)); } } catch (e) {}
+        return r;
+      });
 
-      // persist placed order and fills
-      if (result.placedOrder) {
-        // ensure remaining and status
-        result.placedOrder.remaining = result.placedOrder.remaining || result.placedOrder.amount;
-        result.placedOrder.status = 'open';
-        data.orders.push(result.placedOrder);
-        try { if (sqlite) sqlite.insertOrder(result.placedOrder); } catch (e) {}
-      }
-
-      // apply fills to user balances/assets
-      if (result.fills && result.fills.length) {
-        result.fills.forEach(f => {
-          // taker
-          const takerOrder = data.orders.find(o => o.id == f.takerOrderId) || (f.takerOrderId == order.id ? order : null);
-          const makerOrder = data.orders.find(o => o.id == f.makerOrderId) || null;
-
-          const taker = (data.users || []).find(u => u.id == (takerOrder && takerOrder.userId));
-          const maker = (data.users || []).find(u => u.id == (makerOrder && makerOrder.userId));
-
-          // transfer: if taker bought, deduct balance and add asset; if taker sold, remove asset and add balance
-          if (taker) {
-            if (f.takerSide === 'buy') {
-              taker.balance = (taker.balance || 0) - (f.price * f.amount);
-              taker.assets = taker.assets || {}; taker.assets[f.symbol] = (taker.assets[f.symbol] || 0) + f.amount;
-            } else {
-              taker.assets = taker.assets || {}; taker.assets[f.symbol] = (taker.assets[f.symbol] || 0) - f.amount;
-              taker.balance = (taker.balance || 0) + (f.price * f.amount);
-            }
-          }
-          if (maker) {
-            if (f.takerSide === 'buy') {
-              // maker sold
-              maker.assets = maker.assets || {}; maker.assets[f.symbol] = (maker.assets[f.symbol] || 0) - f.amount;
-              maker.balance = (maker.balance || 0) + (f.price * f.amount);
-            } else {
-              // maker bought
-              maker.balance = (maker.balance || 0) - (f.price * f.amount);
-              maker.assets = maker.assets || {}; maker.assets[f.symbol] = (maker.assets[f.symbol] || 0) + f.amount;
-            }
-          }
-
-          // mark orders' remaining/status
-          const takerO = data.orders.find(o => o.id == f.takerOrderId);
-          const makerO = data.orders.find(o => o.id == f.makerOrderId);
-          if (takerO) {
-            takerO.remaining = (takerO.remaining || takerO.amount) - f.amount;
-            if ((takerO.remaining || 0) <= 0) takerO.status = 'filled'; else takerO.status = 'partial';
-          }
-          if (makerO) {
-            makerO.remaining = (makerO.remaining || makerO.amount) - f.amount;
-            if ((makerO.remaining || 0) <= 0) makerO.status = 'filled'; else makerO.status = 'partial';
-          }
-
-          // persist trade row
-          try { if (sqlite) sqlite.insertTrade(f); } catch (e) {}
-          // ensure trades array stores this fill for API and recovery
-          data.trades = data.trades || [];
-          data.trades.push(f);
-        });
-      }
-
-      await saveData(data);
-      // persist users updated
-      try { if (sqlite) {
-        (data.users || []).forEach(u => sqlite.insertOrUpdateUser(u));
-      } } catch (e) {}
+      // broadcast after successful persist
       notifyAll('orders', data.orders);
       notifyAll('trades', data.trades || []);
       notifyAll('stats', computeStats(data));
       log('order.place', order.id || (result.placedOrder && result.placedOrder.id), 'fills', (result.fills || []).length);
-      
       res.json({ success: true, data: { fills: result.fills, placed: result.placedOrder } });
     } catch (err) {
       console.error('place order error', err);
@@ -325,6 +381,23 @@ async function createServer() {
       const order = (data.orders || []).find(o => o.id == id);
       if (!order) return res.status(404).json({ success: false, error: 'order not found' });
       res.json({ success: true, data: order });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  });
+
+  // admin: update user fields (balance/assets) - body: { id, changes }
+  app.post('/api/admin/user/update', async (req, res) => {
+    try {
+      const { id, changes } = req.body || {};
+      if (!id) return res.status(400).json({ success: false, error: 'id required' });
+      await performAtomicUpdate(async () => {
+        const user = (data.users || []).find(u => u.id == id);
+        if (!user) throw new Error('user not found');
+        Object.assign(user, changes || {});
+        try { if (sqlite) sqlite.insertOrUpdateUser(user); } catch (e) {}
+      });
+      notifyAll('users', (data.users || []).map(u => ({ id: u.id, username: u.username, email: u.email, phone: u.phone, created_at: u.created_at })));
+      notifyAll('stats', computeStats(data));
+      res.json({ success: true });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
   });
 
