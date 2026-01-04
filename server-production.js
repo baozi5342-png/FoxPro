@@ -159,6 +159,7 @@ async function createServer() {
         data.users = (loaded.users && loaded.users.length) ? loaded.users : data.users;
         data.orders = (loaded.orders && loaded.orders.length) ? loaded.orders : (data.orders || []);
         data.trades = (loaded.trades && loaded.trades.length) ? loaded.trades : (data.trades || []);
+        data.markets = (loaded.markets && loaded.markets.length) ? loaded.markets : (data.markets || []);
       }
     } else {
       // sqlite not available; proceed with file storage
@@ -356,6 +357,35 @@ async function createServer() {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
   });
 
+  // list markets
+  app.get('/api/markets', (req, res) => {
+    try {
+      res.json({ success: true, data: data.markets || [] });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  });
+
+  // get market config by symbol
+  app.get('/api/market/:symbol', (req, res) => {
+    try {
+      const symbol = (req.params.symbol || '').toString();
+      const market = (data.markets || []).find(m => (m.symbol || '').toString() === symbol);
+      if (!market) return res.status(404).json({ success: false, error: 'market not found' });
+      // include lightweight orderbook snapshot
+      const orderbook = (engine && typeof engine.getOrderBook === 'function') ? engine.getOrderBook(symbol, 50) : null;
+      res.json({ success: true, data: Object.assign({}, market, { orderbook }) });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  });
+
+  // get market orderbook
+  app.get('/api/market/:symbol/orderbook', (req, res) => {
+    try {
+      const symbol = (req.params.symbol || '').toString();
+      if (!engine || typeof engine.getOrderBook !== 'function') return res.status(500).json({ success: false, error: 'engine not available' });
+      const ob = engine.getOrderBook(symbol, parseInt(req.query.depth) || 50);
+      res.json({ success: true, data: ob });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  });
+
   function heartbeat() { this.isAlive = true; }
 
   // order detail
@@ -415,7 +445,7 @@ async function createServer() {
         } else {
           data.markets.push(Object.assign({ created_at: now, updated_at: now }, cfg));
         }
-        try { if (sqlite) { /* persist markets if sqlite schema exists (not implemented) */ } } catch (e) {}
+        try { if (sqlite && typeof sqlite.insertOrUpdateMarket === 'function') sqlite.insertOrUpdateMarket(Object.assign({}, cfg, { updated_at: now })); } catch (e) {}
       });
       // persist and broadcast
       await saveData(data);

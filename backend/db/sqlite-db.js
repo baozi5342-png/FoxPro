@@ -49,6 +49,16 @@ function init(dbPath) {
       data TEXT
     )`).run();
 
+    DB.prepare(`CREATE TABLE IF NOT EXISTS markets (
+      symbol TEXT PRIMARY KEY,
+      status TEXT,
+      minQty REAL,
+      pricePrecision INTEGER,
+      created_at TEXT,
+      updated_at TEXT,
+      data TEXT
+    )`).run();
+
     AVAILABLE = true;
     return true;
   } catch (err) {
@@ -92,12 +102,28 @@ function insertTrade(trade) {
   return true;
 }
 
+function insertOrUpdateMarket(m) {
+  if (!DB) return false;
+  const now = new Date().toISOString();
+  const existing = DB.prepare('SELECT symbol FROM markets WHERE symbol = ?').get(m.symbol);
+  const data = JSON.stringify(m || {});
+  if (existing) {
+    DB.prepare('UPDATE markets SET status = ?, minQty = ?, pricePrecision = ?, updated_at = ?, data = ? WHERE symbol = ?')
+      .run(m.status || null, m.minQty != null ? m.minQty : null, m.pricePrecision != null ? m.pricePrecision : null, now, data, m.symbol);
+  } else {
+    DB.prepare('INSERT INTO markets (symbol, status, minQty, pricePrecision, created_at, updated_at, data) VALUES (?,?,?,?,?,?,?)')
+      .run(m.symbol, m.status || null, m.minQty != null ? m.minQty : null, m.pricePrecision != null ? m.pricePrecision : null, now, now, data);
+  }
+  return true;
+}
+
 function loadAll() {
   if (!DB) return null;
   const users = DB.prepare('SELECT data FROM users').all().map(r => JSON.parse(r.data));
   const orders = DB.prepare('SELECT data FROM orders').all().map(r => JSON.parse(r.data));
   const trades = DB.prepare('SELECT data FROM trades').all().map(r => JSON.parse(r.data));
+  const markets = DB.prepare('SELECT data FROM markets').all().map(r => JSON.parse(r.data));
   return { users, orders, trades };
 }
 
-module.exports = { init, close, available, insertOrUpdateUser, insertOrder, insertTrade, loadAll };
+module.exports = { init, close, available, insertOrUpdateUser, insertOrder, insertTrade, insertOrUpdateMarket, loadAll };
