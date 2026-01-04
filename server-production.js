@@ -16,33 +16,13 @@ async function loadData() {
       users: [],
       kyc: [],
       quick_contract: { config: [], orders: [] },
-      // perform atomic place: reserve funds/assets first then place & persist
-      const result = await performAtomicUpdate(async () => {
-        // reservation
-        const user = (data.users || []).find(u => u.id == order.userId);
-        if (!user) throw new Error('user not found');
-        user.reservedBalance = user.reservedBalance || 0;
-        user.reservedAssets = user.reservedAssets || {};
-        if (order.side === 'buy') {
-          if (order.type === 'limit') {
-            const need = (order.price || 0) * (order.amount || 0);
-            if ((user.balance || 0) < need) throw new Error('insufficient balance for reserve');
-            user.balance -= need; user.reservedBalance += need;
-          }
-          // market buy: do not reserve, will deduct on fill
-        } else if (order.side === 'sell') {
-          user.assets = user.assets || {};
-          const have = (user.assets[order.symbol] || 0);
-          if (have < (order.amount || 0)) throw new Error('insufficient asset balance for reserve');
-          user.assets[order.symbol] = have - (order.amount || 0);
-          user.reservedAssets[order.symbol] = (user.reservedAssets[order.symbol] || 0) + (order.amount || 0);
-        }
-
-        const r = engine.placeOrder(order);
+      recharge_orders: [],
+      lending_requests: [],
       withdrawal_orders: [],
       exchange_records: [],
       products: [],
-      orders: []
+      orders: [],
+      trades: []
     };
   }
 }
@@ -455,31 +435,9 @@ async function createServer() {
           // apply fills
           if (result.fills && result.fills.length) {
             result.fills.forEach(f => {
-              const takerOrder = data.orders.find(o => o.id == f.takerOrderId) || (f.takerOrderId == order.id ? order : null);
-              const makerOrder = data.orders.find(o => o.id == f.makerOrderId) || null;
-              const taker = (data.users || []).find(u => u.id == (takerOrder && takerOrder.userId));
-              const maker = (data.users || []).find(u => u.id == (makerOrder && makerOrder.userId));
-              if (taker) {
-                if (f.takerSide === 'buy') {
-                  taker.balance = (taker.balance || 0) - (f.price * f.amount);
-                  taker.assets = taker.assets || {}; taker.assets[f.symbol] = (taker.assets[f.symbol] || 0) + f.amount;
-                } else {
-                  taker.assets = taker.assets || {}; taker.assets[f.symbol] = (taker.assets[f.symbol] || 0) - f.amount;
-                  taker.balance = (taker.balance || 0) + (f.price * f.amount);
-                }
-              }
-              if (maker) {
-                if (f.takerSide === 'buy') {
-                  maker.assets = maker.assets || {}; maker.assets[f.symbol] = (maker.assets[f.symbol] || 0) - f.amount;
-                  maker.balance = (maker.balance || 0) + (f.price * f.amount);
-                } else {
-                  maker.balance = (maker.balance || 0) - (f.price * f.amount);
-                  maker.assets = maker.assets || {}; maker.assets[f.symbol] = (maker.assets[f.symbol] || 0) + f.amount;
-                }
-              }
-
-              const takerO = data.orders.find(o => o.id == f.takerOrderId);
-              const makerO = data.orders.find(o => o.id == f.makerOrderId);
+              applyFill(f);
+              const takerO = data.orders.find(o => o.id == f.takerOrderId) || (f.takerOrderId == order.id ? order : null);
+              const makerO = data.orders.find(o => o.id == f.makerOrderId) || null;
               if (takerO) {
                 takerO.remaining = (takerO.remaining || takerO.amount) - f.amount;
                 takerO.status = ((takerO.remaining || 0) <= 0) ? 'filled' : 'partial';
@@ -488,7 +446,6 @@ async function createServer() {
                 makerO.remaining = (makerO.remaining || makerO.amount) - f.amount;
                 makerO.status = ((makerO.remaining || 0) <= 0) ? 'filled' : 'partial';
               }
-
               try { if (sqlite) sqlite.insertTrade(f); } catch (e) {}
               data.trades = data.trades || [];
               data.trades.push(f);
@@ -537,6 +494,19 @@ async function createServer() {
   wss.on('close', () => clearInterval(interval));
 
   global.notifyAll = notifyAll;
+
+  // periodic persistence snapshot and orderbook broadcast
+  const snapshotInterval = setInterval(async () => {
+    try { await saveData(data); } catch (e) { /* ignore */ }
+    try {
+      // broadcast orderbook for each known symbol
+      if (engine && engine.orderBooks) {
+        Object.keys(engine.orderBooks).forEach(sym => {
+          try { notifyAll('orderbook', engine.getOrderBook(sym, 20)); } catch (e) {}
+        });
+      }
+    } catch (e) {}
+  }, CONFIG.snapshotIntervalMs || 5000);
 
   const PORT = process.env.PORT || 3000;
   server.listen(PORT, () => console.log(`FoxPro server running on http://localhost:${PORT}`));
