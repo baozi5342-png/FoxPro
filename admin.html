@@ -399,6 +399,13 @@
       font-weight: 600;
     }
 
+    /* orders & trades panels */
+    .panel-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
     .tag-success {
       background: rgba(16, 185, 129, 0.2);
       color: var(--success);
@@ -588,6 +595,7 @@
       }
     }
   </style>
+  <script src="api-config.js"></script>
 </head>
 <body>
   <!-- 顶部导航栏 -->
@@ -683,6 +691,61 @@
       </div>
     </div>
 
+    <!-- 订单与成交（交易） -->
+    <div id="exchange" class="section">
+      <div class="section-header">
+        <div class="section-title">交易订单与成交</div>
+        <div class="section-subtitle">实时展示挂单与成交</div>
+      </div>
+
+      <div class="card panel-split">
+        <div>
+          <div class="card-title">挂单列表</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>用户</th>
+                  <th>符号</th>
+                  <th>方向</th>
+                  <th>价格</th>
+                  <th>数量</th>
+                  <th>剩余</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTable">
+                <tr><td colspan="8" style="text-align:center;color:var(--muted);">无数据</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <div class="card-title">最近成交</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>符号</th>
+                  <th>价格</th>
+                  <th>数量</th>
+                  <th>方向</th>
+                  <th>时间</th>
+                  <th>makerOrder</th>
+                </tr>
+              </thead>
+              <tbody id="tradesTable">
+                <tr><td colspan="7" style="text-align:center;color:var(--muted);">无成交</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 用户管理 -->
     <div id="users" class="section">
       <div class="section-header">
@@ -756,278 +819,30 @@
       <div id="kyc-advanced" class="tab-content">
         <div class="card">
           <div class="card-title">高级认证请求</div>
-          <div class=
-        tbody.innerHTML = '';
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>用户</th>
+                  <th>姓名</th>
+                  <th>证件类型</th>
+                  <th>证件号</th>
+                  <th>状态</th>
+                  <th>申请时间</th>
+                </tr>
+              </thead>
+              <tbody id="advancedKYCTable">
+                <tr>
+                  <td colspan="7" style="text-align: center; color: var(--muted);">加载中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-        if (result.success && result.data && result.data.length > 0) {
-          result.data.forEach(product => {
-            tbody.innerHTML += `
-              <tr>
-                <td>${product.id || '-'}</td>
-                <td>${product.name || '-'}</td>
-                <td>${product.code || '-'}</td>
-                <td>$${product.price || '0'}</td>
-                <td>${product.created_at || '-'}</td>
-              </tr>
-            `;
-          });
-        } else {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted);">无数据</td></tr>';
-        }
-      } catch (error) {
-        console.error('加载产品列表失败:', error);
-      }
-    }
-
-    // 添加产品
-    async function addProduct() {
-      const name = document.getElementById('productName').value;
-      const code = document.getElementById('productCode').value;
-      const price = document.getElementById('productPrice').value;
-
-      if (!name || !code || !price) {
-        alert('请填写所有字段');
-        return;
-      }
-
-      try {
-        const response = await fetch(`${API_BASE}/admin/products`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, code, price: parseFloat(price) })
-        });
-
-        const result = await response.json();
-        if (result.success) {
-          alert('产品添加成功');
-          document.getElementById('productName').value = '';
-          document.getElementById('productCode').value = '';
-          document.getElementById('productPrice').value = '';
-          loadProducts();
-        } else {
-          alert('产品添加失败: ' + (result.message || '未知错误'));
-        }
-      } catch (error) {
-        console.error('添加产品失败:', error);
-        alert('添加产品失败');
-      }
-    }
-
-    // 加载快速合约配置
-    async function loadQuickContractConfig() {
-      try {
-        const response = await fetch(`${API_BASE}/quick-contract/config`);
-        const result = await response.json();
-
-        const tbody = document.getElementById('quickContractTable');
-        tbody.innerHTML = '';
-
-        if (result.success && result.data && result.data.periods && result.data.periods.length > 0) {
-          result.data.periods.forEach(period => {
-            tbody.innerHTML += `
-              <tr>
-                <td>${period.name}</td>
-                <td>${period.value} 分钟</td>
-                <td>
-                  <button class="btn btn-small btn-danger" onclick="deleteQuickContractPeriod(${period.value})">删除</button>
-                </td>
-              </tr>
-            `;
-          });
-        } else {
-          tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--muted);">无数据</td></tr>';
-        }
-      } catch (error) {
-        console.error('加载快速合约配置失败:', error);
-      }
-    }
-
-    // 添加快速合约周期
-    async function addQuickContractPeriod() {
-      const name = document.getElementById('periodName').value;
-      const value = document.getElementById('periodValue').value;
-
-      if (!name || !value) {
-        alert('请填写所有字段');
-        return;
-      }
-
-      try {
-        const response = await fetch(`${API_BASE}/admin/quick-contract/period`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, value: parseInt(value) })
-        });
-
-        const result = await response.json();
-        if (result.success) {
-          alert('周期添加成功');
-          document.getElementById('periodName').value = '';
-          document.getElementById('periodValue').value = '';
-          loadQuickContractConfig();
-        } else {
-          alert('周期添加失败: ' + (result.message || '未知错误'));
-        }
-      } catch (error) {
-        console.error('添加周期失败:', error);
-        alert('添加周期失败');
-      }
-    }
-
-    // 删除快速合约周期
-    async function deleteQuickContractPeriod(value) {
-      if (!confirm('确定要删除这个周期吗?')) return;
-
-      try {
-        const response = await fetch(`${API_BASE}/admin/quick-contract/period/${value}`, {
-          method: 'DELETE'
-        });
-
-        const result = await response.json();
-        if (result.success) {
-          alert('周期删除成功');
-          loadQuickContractConfig();
-        } else {
-          alert('周期删除失败: ' + (result.message || '未知错误'));
-        }
-      } catch (error) {
-        console.error('删除周期失败:', error);
-        alert('删除周期失败');
-      }
-    }
-
-    // 加载快速合约订单
-    async function loadQuickContractOrders() {
-      try {
-        const response = await fetch(`${API_BASE}/admin/quick-contract/orders`);
-        const result = await response.json();
-
-        const tbody = document.getElementById('quickContractOrdersTable');
-        tbody.innerHTML = '';
-
-        if (result.success && result.data && result.data.length > 0) {
-          result.data.forEach(order => {
-            tbody.innerHTML += `
-              <tr>
-                <td>${order.id || '-'}</td>
-                <td>${order.user_id || '-'}</td>
-                <td>${order.product || '-'}</td>
-                <td>$${order.amount || '0'}</td>
-                <td>${order.period || '-'}</td>
-                <td><span class="tag tag-primary">${order.direction || '-'}</span></td>
-                <td><span class="tag tag-warning">${order.status || '进行中'}</span></td>
-                <td>${order.created_at || '-'}</td>
-              </tr>
-            `;
-          });
-        } else {
-          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--muted);">无数据</td></tr>';
-        }
-      } catch (error) {
-        console.error('加载快速合约订单失败:', error);
-      }
-    }
-
-    // 加载充值订单
-    async function loadRechargeOrders() {
-      try {
-        const response = await fetch(`${API_BASE}/admin/recharge-orders`);
-        const result = await response.json();
-
-        const tbody = document.getElementById('rechargeTable');
-        tbody.innerHTML = '';
-
-        if (result.success && result.data && result.data.length > 0) {
-          result.data.forEach(order => {
-            tbody.innerHTML += `
-              <tr>
-                <td>${order.id || '-'}</td>
-                <td>${order.user_id || '-'}</td>
-                <td>$${order.amount || '0'}</td>
-                <td>${order.method || '-'}</td>
-                <td><span class="tag tag-warning">${order.status || '待处理'}</span></td>
-                <td>${order.created_at || '-'}</td>
-              </tr>
-            `;
-          });
-        } else {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">无数据</td></tr>';
-        }
-      } catch (error) {
-        console.error('加载充值订单失败:', error);
-      }
-    }
-
-    // 加载借贷数据
-    async function loadLendingData(type) {
-      if (type === 'products') {
-        loadLendingProducts();
-      } else {
-        loadLendingRequests();
-      }
-    }
-
-    // 加载借贷产品
-    async function loadLendingProducts() {
-      try {
-        const response = await fetch(`${API_BASE}/admin/lending-products`);
-        const result = await response.json();
-
-        const tbody = document.getElementById('lendingProductsTable');
-        tbody.innerHTML = '';
-
-        if (result.success && result.data && result.data.length > 0) {
-          result.data.forEach(product => {
-            tbody.innerHTML += `
-              <tr>
-                <td>${product.id || '-'}</td>
-                <td>${product.name || '-'}</td>
-                <td>${product.interest_rate || '0'}%</td>
-                <td>${product.term_days || '-'} 天</td>
-                <td>$${product.min_amount || '0'}</td>
-                <td><span class="tag tag-success">启用</span></td>
-              </tr>
-            `;
-          });
-        } else {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">无数据</td></tr>';
-        }
-      } catch (error) {
-        console.error('加载借贷产品失败:', error);
-      }
-    }
-
-    // 加载借贷请求
-    async function loadLendingRequests() {
-      try {
-        const response = await fetch(`${API_BASE}/admin/lending-requests`);
-        const result = await response.json();
-
-        const tbody = document.getElementById('lendingRequestsTable');
-        tbody.innerHTML = '';
-
-        if (result.success && result.data && result.data.length > 0) {
-          result.data.forEach(request => {
-            tbody.innerHTML += `
-              <tr>
-                <td>${request.id || '-'}</td>
-                <td>${request.user_id || '-'}</td>
-                <td>${request.product_id || '-'}</td>
-                <td>$${request.amount || '0'}</td>
-                <td>${request.term_days || '-'} 天</td>
-                <td><span class="tag tag-warning">${request.status || '待审核'}</span></td>
-                <td>${request.created_at || '-'}</td>
-              </tr>
-            `;
-          });
-        } else {
-          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--muted);">无数据</td></tr>';
-        }
-      } catch (error) {
-        console.error('加载借贷请求失败:', error);
-      }
-    }
-
+  <script>
     // 加载兑换汇率
     async function loadExchangeRates() {
       try {
@@ -1194,7 +1009,9 @@
                 loadQuickContractConfig();
                 break;
               case 'orders':
-                if (document.querySelector('.nav-tab[onclick*="quick-contract"]')?.classList.contains('active')) {
+                if (document.querySelector('.nav-tab[onclick*="exchange"]')?.classList.contains('active')) {
+                  renderOrdersList(msg.payload || []);
+                } else if (document.querySelector('.nav-tab[onclick*="quick-contract"]')?.classList.contains('active')) {
                   loadQuickContractOrders();
                 }
                 break;
@@ -1216,6 +1033,11 @@
               case 'exchange-records':
                 if (document.querySelector('.nav-tab[onclick*="exchange"]')?.classList.contains('active')) {
                   loadExchangeRecords();
+                }
+                break;
+              case 'trades':
+                if (document.querySelector('.nav-tab[onclick*="exchange"]')?.classList.contains('active')) {
+                  renderTradesList(msg.payload || []);
                 }
                 break;
             }
@@ -1286,6 +1108,89 @@
       } catch (e) {
         console.warn('updateStatsUI error', e.message);
       }
+    }
+
+    // 渲染成交列表（来自 WS payload）
+    function renderTradesList(trades) {
+      try {
+        const tbody = document.getElementById('exchangeRecordsTable') || document.getElementById('tradesTable');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (!trades || trades.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--muted);">无成交</td></tr>';
+          return;
+        }
+        trades.forEach(t => {
+          tbody.innerHTML += `
+            <tr>
+              <td>${t.id || '-'}</td>
+              <td>${t.symbol || '-'}</td>
+              <td>${t.price || '-'}</td>
+              <td>${t.amount || '-'}</td>
+              <td>${t.takerSide || '-'}</td>
+              <td>${t.timestamp || '-'}</td>
+              <td>${t.makerOrderId || '-'}</td>
+            </tr>
+          `;
+        });
+      } catch (e) {
+        console.warn('renderTradesList error', e.message);
+      }
+    }
+
+    // 渲染挂单列表并添加撤单按钮
+    function renderOrdersList(orders) {
+      try {
+        const tbody = document.getElementById('ordersTable');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (!orders || orders.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">无数据</td></tr>';
+          return;
+        }
+        orders.forEach(o => {
+          const id = o.id || '-';
+          const user = o.userId || '-';
+          const symbol = o.symbol || '-';
+          const side = o.side || '-';
+          const price = o.price != null ? o.price : '-';
+          const amount = o.amount != null ? o.amount : '-';
+          const remaining = o.remaining != null ? o.remaining : (o.amount != null ? o.amount : '-');
+          const status = o.status || 'open';
+          const cancelBtn = (status !== 'filled' && status !== 'cancelled') ? `<button class="btn-cancel" data-id="${id}">撤单</button>` : '';
+          tbody.innerHTML += `
+            <tr>
+              <td>${id}</td>
+              <td>${user}</td>
+              <td>${symbol}</td>
+              <td>${side}</td>
+              <td>${price}</td>
+              <td>${amount}</td>
+              <td>${remaining}</td>
+              <td>${status} ${cancelBtn}</td>
+            </tr>
+          `;
+        });
+
+        // attach cancel handlers
+        tbody.querySelectorAll('.btn-cancel').forEach(btn => {
+          btn.addEventListener('click', async (ev) => {
+            const id = ev.currentTarget.getAttribute('data-id');
+            if (!id) return;
+            if (!confirm('确认撤单 #' + id + ' ?')) return;
+            try {
+              const res = await fetch('/api/order/cancel', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId: parseInt(id) })
+              });
+              const j = await res.json();
+              if (!j || !j.success) alert('撤单失败: ' + (j && j.error));
+            } catch (e) {
+              alert('撤单请求失败');
+            }
+          });
+        });
+      } catch (e) { console.warn('renderOrdersList error', e && e.message); }
     }
   </script>
 </body>

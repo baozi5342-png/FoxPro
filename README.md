@@ -398,6 +398,39 @@ fetch('http://localhost:3000/api/spot/place-order', {
 - ✨ 专业级后台管理
 - ✨ 完整API体系
 - ✨ 国际化界面
+
+---
+
+**本地运行与测试（开发者说明）**
+
+1. 安装依赖：
+
+```bash
+npm install
+```
+
+2. 启动服务器（开发）：
+
+```bash
+node server-production.js
+```
+
+3. 可选：在另一个终端运行自动化测试脚本：
+
+```bash
+node tools/api_test.js
+node tools/ws_test_client.js
+node tools/order_test.js
+```
+
+注意：当前编辑环境可能对长运行进程注入 SIGINT 导致中断。若遇到服务器被意外终止，请在本地或使用进程管理工具（如 `pm2`）重试：
+
+```bash
+npx pm2 start server-production.js --name foxpro
+pm2 logs foxpro
+```
+
+如需把修改合并到远程仓库，请先在本地验证一切通过再提交。若需要我继续在仓库内完善（例如：订单取消、余额记账、单元测试），告诉我优先级即可。
 - ✨ 生产就绪代码
 
 **现在您拥有一个真正的交易所产品！**

@@ -13,9 +13,11 @@
     }
   ],
   "kyc_requests": [],
+  "kyc": [],
   "orders": [],
   "products": [],
-  "exchanges": [],
+  "exchange_records": [],
+  "trades": [],
   "recharge_config": {
     "address": "Default Address",
     "minAmount": 10,
@@ -27,5 +29,6 @@
   "quickContractPeriods": [
     { "id": 1, "seconds": 30, "profitRate": 40 },
     { "id": 2, "seconds": 60, "profitRate": 50 }
-  ]
+  ],
+  "quick_contract": { "config": [], "orders": [] }
 }
